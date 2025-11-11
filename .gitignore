@@ -148,6 +148,9 @@ venv.bak/
 .spyderproject
 .spyproject
 
+# Visual Studio Code settings
+.vscode/settings.json
+
 # Rope project settings
 .ropeproject
 
@@ -205,3 +208,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# OS files
+*.DS_Store
+
+# Project-specific ignores
+/bin
+*outputs/
