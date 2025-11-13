@@ -8,7 +8,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.18.1
 #   kernelspec:
 #     display_name: modflow
 #     language: python
@@ -18,10 +18,26 @@
 # %% [markdown]
 # # ASR Test Simulation: Phreeqc Example 11 Chemistry
 #
-# Grid Size: ~4800 ft x 4700 ft
-# Grid cells 1.2 ft – 155 ft
-# Cells per layer = 1032
-# Total cells = 5160
+# NOTE: This [Jupytext](https://jupytext.readthedocs.io/en/latest/index.html) paired notebook, with paired `.py` and `.ipynb` files. 
+# - If using VS Code, install the the [Jupytext Sync extension](https://jupytext.readthedocs.io/en/latest/vs-code.html) for maximum benefit.
+#
+#
+# The workflow for this example:
+# - Read geochemical components and their initial and boundary concentrations from PHREEQC input files
+# - Create new Modflow 6 transport model for each aqueous phase (components in the Solution blocks) and add their initial concentrations over the entire DISV grid.
+# - Modify the Modflow 6 Flow Well package Stress Period Data (SPD) by adding Solution component concentrations.
+# - Run the modified Modflow 6 for conservative transport of all components (i.e. no coupling to PHREEQC)
+# - Run the coupled Modflow 6 & PHREEQC models for the entire simulation
+#
+#
+#
+# ## Simple ASR Test Case
+#
+# Grid type: DISV  
+# Grid Size: ~4800 ft x 4700 ft  
+# Grid cells 1.2 ft – 155 ft  
+# Cells per layer = 1032  
+# Total cells = 5160  
 #
 # Grid Layers:
 #  - Layer 1: heads of all cells specified with CHD
@@ -43,9 +59,6 @@
 #  - GHBs were setup using map coverages in GMS.  Heads were pulled from the old KRASR SEAWAT local scale model at a few points along the test model boundary, then the map module was used to interpolate the heads to the boundary cells.  The head contours along the boundaries look a little strange during injection and recovery, but it should be ok for the purposes of the test model
 #  - TDS and temperature were assumed to be constant along the model boundaries but varied by model layer based on the KRASR local scale model results
 #  - Specific storage was constant for each layer
-#
-#
-# The workflow for this example starts with loading a pre-existing MODFLOW 6 model, then builds the PHREEQC yaml file from scratch based off of the MODFLOW 6 input file parameters.
 
 # %% [markdown]
 # # Installation and Setup
@@ -114,26 +127,33 @@ repo_path
 # ### Modflow Inputs
 
 # %%
-simulation_name = "sim01-ex11"
+# Modflow 6 simple ASR DISV test case files
+# All simulations in this repo start with this flow & transport simulation
+zip_path = repo_path / 'data' / 'MF6_ASR_DISV.zip'
 
-# Path to MF6 inputs created by NAP
-sim_ws = Path(
-    # Default if working from this repository
-    working_dir / simulation_name
-)
+# %%
+# Path to simulation workspace, which will get over-written by this notebook
+sim_ws = working_dir / 'MF6_ASR_DISV'
+sim_ws.mkdir(parents=True, exist_ok=True)
+
+simulation_name = sim_ws.parent.name
+simulation_name
+
+# %%
+sim_ws
+
+# %%
 # Check to see if model directory exists. If it does, delete it and start fresh
-zip_path = sim_ws.parent / f"{simulation_name}.zip"
-extract_to = sim_ws.parent
-
+extract_to = sim_ws
 if sim_ws.is_dir():
     print("Model files already exist. Removing and unzipping original files.")
-    shutil.rmtree(sim_ws)
+    shutil.rmtree(extract_to)
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
         zip_ref.extractall(extract_to)
 else:
     print("No prior model found. Unzipping original files.")
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(extract_to)
+        zip_ref.extractall(sim_ws)
 
 if sim_ws.exists():
     print("sim_ws exists")

@@ -37,7 +37,7 @@ dependencies:
   # NOTE: iMod substantially increases install size. https://deltares.github.io/imod-python/installation.html#dependencies
   - imod
 
-  # PyData packages not included above
+  # PyData packages not included above (optional)
   - geopandas
   - xarray
   - h5py
