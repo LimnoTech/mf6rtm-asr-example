@@ -215,3 +215,4 @@ __marimo__/
 # Project-specific ignores
 /bin
 *outputs/
+*ws/

@@ -123,80 +123,69 @@ working_dir = Path.cwd()
 repo_path = working_dir.parent.parent
 repo_path
 
+# %%
+simulation_name = working_dir.name
+simulation_name
+
+# %%
+# Path to simulation workspace, which is git-ignored and 
+# will get over-written with each run of this notebook
+sim_ws = working_dir / 'ws'
+sim_ws.mkdir(parents=True, exist_ok=True)
+
+# %%
+# Delete previous contents from simulation
+if sim_ws.exists():
+    try:
+        shutil.rmtree(sim_ws)
+        print(f"Directory '{sim_ws}' and its contents removed successfully.")
+        sim_ws.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f"Error: {sim_ws} : {e.strerror}")
+else:
+    print(f"Directory '{sim_ws}' does not exist.")
+
 # %% [markdown]
 # ### Modflow Inputs
 
 # %%
-# Modflow 6 simple ASR DISV test case files
-# All simulations in this repo start with this flow & transport simulation
-zip_path = repo_path / 'data' / 'MF6_ASR_DISV.zip'
+# Modflow inputs file folder
+mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs'
+mf6_input_files = os.listdir(mf6_inputs_path)
 
 # %%
-# Path to simulation workspace, which will get over-written by this notebook
-sim_ws = working_dir / 'MF6_ASR_DISV'
-sim_ws.mkdir(parents=True, exist_ok=True)
-
-simulation_name = sim_ws.parent.name
-simulation_name
+# Copy input files to simulation workspace directory)
+for file in mf6_input_files:
+    shutil.copy2(mf6_inputs_path / file, sim_ws)
 
 # %%
-sim_ws
-
-# %%
-# Check to see if model directory exists. If it does, delete it and start fresh
-extract_to = sim_ws
-if sim_ws.is_dir():
-    print("Model files already exist. Removing and unzipping original files.")
-    shutil.rmtree(extract_to)
-    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(extract_to)
-else:
-    print("No prior model found. Unzipping original files.")
-    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(sim_ws)
-
-if sim_ws.exists():
-    print("sim_ws exists")
-else:
-    print("project path does not exist")
-
-# Set simulation workspace equal to input path
-mf6_input_path = sim_ws
+# Add required empty output folders
+folders = [
+    'flow_output',
+    'trans-TDS_output',
+    'trans-temp_output',
+]
+for folder in folders:
+    path = sim_ws / folder
+    path.mkdir(parents=True, exist_ok=True)
 
 # %%
 # Set filepath for the MF6 simulation configuration file
 sim_nam_file_path = sim_ws / "mfsim.nam"
-sim_nam_file_path.exists()
-
-print("MF6 sim file exists?", sim_nam_file_path.exists())
+assert sim_nam_file_path.exists(), "MF6 sim file exists!"
 sim_nam_file_path
 
 # %%
-# # Set the simulation name
-# sim_name = "test7_wel_ex11"  # for figure only
-
-# # to save the edited simulation model files as a separate simulation, specify name here:
-# new_sim_name = None
-# if new_sim_name != None:
-#     new_sim_path = working_dir / new_sim_name
-#     new_flow_output_dir = new_sim_path / "flow_output"
-#     new_flow_output_dir.mkdir(parents=True, exist_ok=True)
-#     new_TDS_output_dir = new_sim_path / "trans-TDS_output"
-#     new_TDS_output_dir.mkdir(parents=True, exist_ok=True)
-#     new_temp_output_dir = new_sim_path / "trans-temp_output"
-#     new_temp_output_dir.mkdir(parents=True, exist_ok=True)
+# Set modflow input path equal to simulation workspace
+mf6_input_path = sim_ws
 
 # %% [markdown]
 # ### PHREEQC Inputs
 
 # %%
 # Phreeqc input file folder
-chem_inputs_path = working_dir / "chem_inputs_ex11"
-if chem_inputs_path.exists():
-    chem_input_files = os.listdir(chem_inputs_path)
-else:
-    print("chem_inputs_path does not exist")
-    chem_inputs_path.mkdir(parents=True, exist_ok=True)
+chem_inputs_path = working_dir / "chem_inputs"
+chem_input_files = os.listdir(chem_inputs_path)
 chem_input_files
 
 # %%
@@ -211,27 +200,25 @@ exchanges_filepath = sim_ws / "chem_exchanges.csv"
 print("PHREEQC input files exist?", solutions_filepath.exists(), exchanges_filepath.exists(), )
 
 # %%
-# Path to PhreeqcRM YAML simulation configuration file
-# Which we will create below
-#  Path to PhreeqcRM YAML created by mf6trm
-phreeqc_mf6rtm_yaml_filepath = sim_ws / "mf6rtm.yaml"
-print("MF6RTM-created PHREEQCRM YAML file exists?", phreeqc_mf6rtm_yaml_filepath.exists())
-
-# %%
-# Set path to PHREEQC Input file (*.pqi)
-phreeqc_input_file = "phinp.dat" # created by mf6rtm.mup3d chem_units = "mol/kgw"
-postfix_filepath = sim_ws /  'ex4_postfix.phqr'
-
-phreeqc_input_filepath = sim_ws / phreeqc_input_file
-print("PHREEQC input file exists?", phreeqc_input_filepath.exists(), postfix_filepath.exists())
+# Path to file with PHREEQC Input "postfix" instructions
+# to be appended to the PHREEQC Input file (*.pqi) created by mf6rtm
+postfix_filepath = sim_ws /  'chem_postfix.phqr'
+postfix_filepath.exists()
 
 # %%
 # Select PHREEQC database file
-# phreeqc_database_file = "phreeqc.dat" # used in Ex6?
-phreeqc_database_file = 'pht3d_datab.dat' # used in Ex4
-phreeqc_databases_path = mf6rtm_source_path / "benchmark" / "database"
+phreeqc_database_file = "phreeqc.dat"
+phreeqc_databases_path = repo_path / "data" / "chem_databases"
 phreeqc_database_filepath = phreeqc_databases_path / phreeqc_database_file
 print("PHREEQC database file exists?", phreeqc_database_filepath.exists())
+
+# %%
+# Paths to PHREEQC configuration files that will be created by mf6trm
+# PHREEQC Input file (*.pqi)
+phreeqc_input_filepath = sim_ws / "phinp.dat"
+# PhreeqcRM YAML config file
+phreeqcrm_yaml_filepath = sim_ws / "mf6rtm.yaml"
+print("MF6RTM-created PHREEQCRM YAML file exists?", phreeqcrm_yaml_filepath.exists())
 
 # %% [markdown]
 # ## Set Path to MF6 Executable & Library
@@ -281,17 +268,15 @@ mf6dll_version = ModflowApi(dll).get_version()
 print(f"User-selected executable ({mf6_exe.exists()}): {mf6_version[1]}, dll: {mf6dll_version}")
 
 # %%
-# Copy executable and library to simulation workspace directory (i.e. project path)
+# Copy executable and library to simulation workspace
 shutil.copy2(mf6_exe, sim_ws)
 shutil.copy2(dll, sim_ws)
-
-# %%
 (sim_ws/mf6_exe.name).exists()
 
 # %% [markdown]
 # ## Utility Functions
 #
-# These functions moved to `LOWRP_ASR/utils.py`:
+# These functions are available in `src/utils.py`:
 # - `run_models()`
 # - `write_models()`
 # - `create_mf6_gwt()`
@@ -1071,88 +1056,6 @@ for t in t_l:
 
 # %%
 # Run the model using this wrapper function for `mf6rtm.solve(model.wd)`
-reaction_model.run()
-
-# %% [markdown]
-# ### Initialized PhreeqcRM simulation instance
-# Created above and containing all info for reaction module
-
-# %%
-# reaction_model?
-
-# %%
-# Run the model using this wrapper function for `mf6rtm.solve(model.wd)`
-reaction_model.run()
-
-# %%
-# mf6rtm.mup3d created PhreeqcRM simulation object
-# reaction_model.phreeqc_rm?
-
-# %%
-# Access the PhreeqcRM object directly, if necessary
-# reaction_model.phreeqc_rm?
-
-# %%
-# mf6rtm.mup3d created this PhreeqcRM YAML file
-# phreeqc_config_filepath = sim_ws / "mf6rtm.yaml"
-reaction_model.phreeqcyaml_file
-
-# %% [markdown]
-# ### Initilize ModflowAPI interface
-
-# %%
-# initialize the ModflowAPI instance
-wd = mf6_input_path
-dll = 'libmf6'
-
-mf6 = mf6rtm.Mf6API(wd, dll)
-
-# %%
-# mf6?
-
-# %%
-# Save list of outputs for use later
-output_var_names = mf6.get_output_var_names()
-input_var_names = mf6.get_input_var_names()
-
-# %%
-# Get list of modflow input varables with concentration data ('/X' or '/XOLD')
-gwt_conc_var_names = []
-for model_name in gwt_model_names:
-    gwt_conc_var_names += [var for var in input_var_names if f'{model_name.upper()}/X' in var]
-gwt_conc_var_names
-
-# %%
-conc_var_name = gwt_conc_var_names[-1]
-conc_var_name
-
-# %%
-# Get info from the BMI functions exposed by modflowapi
-mf6.get_var_rank(conc_var_name)
-
-# %%
-mf6.get_value(conc_var_name)
-
-# %% [markdown]
-# ### Initialize & Run MF6RTM coupling interface
-
-# %%
-rtm = mf6rtm.Mf6RTM(wd, mf6, reaction_model.phreeqc_rm)
-
-# %% [markdown]
-# ### Try this
-
-# %%
-reaction_model.wd
-
-# %%
-str(mf6_input_path)
-
-# %%
-reaction_model.set_wd(str(mf6_input_path))
-reaction_model.wd
-
-# %%
 reaction_model.run()
 
 # %% [markdown]
