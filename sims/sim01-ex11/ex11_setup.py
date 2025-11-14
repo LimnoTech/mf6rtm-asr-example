@@ -419,6 +419,15 @@ if wel.has_stress_period_data == True:
 display(spd_wel_dict)
 
 # %%
+# modify well q to try and address convergence issues
+for sp in range(len(spd_wel_dict)):
+    spd_wel_dict[sp]['q'] = spd_wel_dict[sp]['q'] / 2.
+
+# reset wel stress period data using modified q
+wel.stress_period_data = spd_wel_dict
+spd_wel_dict_edit = wel.stress_period_data.get_data(full_data=True)
+
+# %%
 # data stored in a dictionary of numpy record arrays, 
 # each of which can be easily converted to a pandas dataframe
 stress_period_id = 3
@@ -813,9 +822,8 @@ spd_welchem_df
 # modify tdis
 tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
 tdis_spd
-tdis_spd["nstp"] = tdis_spd[
-    "perlen"
-]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
+tdis_spd["nstp"] = tdis_spd["perlen"] * 2  # each timestep = 0.5 days
+#tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
 # tdis_spd['nstp'][0] = 20 # set first stress period to 20 days with 1 timestep per day
 # tdis_spd['perlen'][0] = 20
 tdis_spd["nstp"]
@@ -970,6 +978,44 @@ for c in range(len(component_name_l)):
 # xsection
 gwf_name = "flow"
 gwf = sim.get_model(gwf_name)
+
+# plot map view of grid showing order of grid cell ids and vertices from:
+# https://modflow6-examples.readthedocs.io/en/latest/_notebooks/ex-gwf-u1disv.html
+fig = plt.figure(figsize=(6,6))
+fig.tight_layout()
+ax = fig.add_subplot(1, 1, 1, aspect="equal")
+pmv = flopy.plot.PlotMapView(model=gwf, ax=ax, layer=0)
+pmv.plot_grid()
+pmv.plot_bc(name="ghb", alpha=0.75)
+pmv.plot_bc(name="wel", alpha=0.75)
+ax.set_xlabel("x position (m)")
+ax.set_ylabel("y position (m)")
+for i, (x, y) in enumerate(
+    zip(gwf.modelgrid.xcellcenters, gwf.modelgrid.ycellcenters)
+):
+    ax.text(
+        x,
+        y,
+        f"{i + 1}",
+        fontsize=6,
+        horizontalalignment="center",
+        verticalalignment="center",
+    )
+v = gwf.disv.vertices.array
+ax.plot(v["xv"], v["yv"], "yo")
+for i in range(v.shape[0]):
+    x, y = v["xv"][i], v["yv"][i]
+    ax.text(
+        x,
+        y,
+        f"{i + 1}",
+        fontsize=5,
+        color="red",
+        horizontalalignment="center",
+        verticalalignment="center",
+    )
+plt.show()
+
 
 # to plot a cross section with disv, you have to make a line to plot along
 
