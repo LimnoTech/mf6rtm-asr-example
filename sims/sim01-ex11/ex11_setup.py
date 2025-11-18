@@ -78,11 +78,11 @@ import numpy as np
 from numpy.lib import recfunctions as rfn
 import pandas as pd
 import matplotlib.pyplot as plt
-import zipfile
+# # %matplotlib widget
 
 import flopy
 from modflowapi import ModflowApi
-import phreeqcrm
+# import phreeqcrm
 
 # %%
 # Import the MFRTM package, installed using `conda develop`
@@ -386,6 +386,10 @@ vertices_df
 domain_size = vertices_df.max() - vertices_df.min()
 domain_size
 
+# %%
+# TODO: Calculate volume of cells near well screen
+cells_df.loc[494:496]
+
 # %% [markdown]
 # ## Read Time Step Info
 
@@ -616,9 +620,10 @@ reaction_model.initialize()
 reaction_model.components
 
 # %%
-# 1D Array of concentrations (mol/L) structured for PhreeqcRM,
-# with each component conc for each grid cell
-# ordered by `model.components`
+# 1D array of concentrations in units of mol/L 
+# structured for PhreeqcRM `GetConcentrations()` and BMI with
+# component concentratinon arrays for the grid ordered as `model.components`
+# Equivalent to `c_dbl_vect` (concentration double vector) in mf6rtm source code
 reaction_model.init_conc_array_phreeqc
 
 # %%
@@ -629,6 +634,9 @@ ncomps_by_nxyz_conc_array = np.reshape(
     (len(reaction_model.components), -1),
 )
 ncomps_by_nxyz_conc_array[:,cell_index]
+
+# %%
+ncomps_by_nxyz_conc_array
 
 # %%
 # Get component concentrations for a selected grid cell
@@ -653,6 +661,7 @@ reaction_model.sconc
 
 # %%
 # create alias for testing current implementation
+# `c_dbl_vect` is the concentration double vector in units of mol/L
 c_dbl_vect = reaction_model.init_conc_array_phreeqc
 
 # %%
@@ -756,7 +765,9 @@ for component_name in component_name_l:
     print("Adding gwt model for: " + component_name)
     gwt_name = "trans-" + component_name
     sim = utils.create_mf6_gwt(
-        sim, gwf_name, gwt_name, component_name, reaction_model.sconc[component_name], porosity, dispersivity
+        sim, gwf_name, gwt_name, component_name, 
+        reaction_model.sconc[component_name],
+        porosity, dispersivity
     )
 
 
@@ -822,66 +833,23 @@ spd_welchem_df
 # modify tdis
 tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
 tdis_spd
-tdis_spd["nstp"] = tdis_spd["perlen"] * 2  # each timestep = 0.5 days
+tdis_spd["nstp"] = tdis_spd["perlen"]  # each timestep = 1.0 days
 #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
 # tdis_spd['nstp'][0] = 20 # set first stress period to 20 days with 1 timestep per day
 # tdis_spd['perlen'][0] = 20
 tdis_spd["nstp"]
 sim.get_package("tdis").perioddata.set_data(tdis_spd)
 
-# %% [markdown]
-# ## Convergence issues for Lauren
-#
-# - changed nstp to 10 for each stress period and change ims complexity to moderate --> improved convergence but still failed in sp 3
-# - changed ims complexity to complex --> fails at sp 6
-# - changed wel q to 0.5 fails
-# - flow only and no buy --> runs
-# - changed nstp to perlen (dt=1 day) with complex --> failed in sp 2
-# - set wel_conc = ic_conc with oringinal tdis, ims = simple, wel_q = 0.5 --> fail sp3
-# - set wel_conc = ic_conc with oringinal tdis, ims = complex, wel_q = 0.5 --> normal termination
-# - remove tds and buy package, wel_conc = ic_conc, ims = complex, wel_q = 0.5 -->
-# - remove tds and buy package, wel_conc = wel_conc, ims = complex, wel_q = 0.5 -->
-# - run with just no buy package --> normal termination
-# - charge, H, and O removed as solutes... and fixed units --> fail in 2nd sp
-# - annnd fixed units in dsp package.... ic = wel_conc, just Na and Ca and tds and temp --> normal termination!! results look ok
-# - Ca, Na where ic != wel_conc, tds and temp --> failed to converge in sp2
-# - Ca, Na where ic != wel_conc, tds and temp, solver = complex --> normal terminantion
-# - try moderate solver option --> normal termination,
-# - complex solver with original tdis, ic !=wel_conc --> same with edge patterns
-
 # %%
 # Remove transport models for testing
-# sim.remove_model('trans-tds')
-# sim.remove_model('trans-temp')
+sim.remove_model('trans-tds')
+sim.remove_model('trans-temp')
 
 # %%
 gwt_model_names = [name for name in sim.model_names 
                     if (sim.get_model(name).model_type == 'gwt6')]
 print("Number of transport models: ",len(gwt_model_names))
 gwt_model_names
-
-# %%
-# Confirm Modflow 6 version
-# !{mf6_exe} --version
-
-# %% [markdown]
-# ## What runs and what crashes with Modflow 6.6.3
-#
-# These run:
-# ```py
-# 8: `['trans-tds', 'trans-temp', 'trans-H', 'trans-O', 'trans-Charge', 'trans-Ca', 'trans-Cl', 'trans-K',]`
-# 5: `[                           'trans-H', 'trans-O', 'trans-Charge', 'trans-Ca', 'trans-Cl',           ]`
-# ```
-#
-# This run, but end in 14 sec:
-# ```py
-# 6: `[                           'trans-H', 'trans-O', 'trans-Charge', 'trans-Ca', 'trans-Cl', 'trans-K',]`
-# ```
-#
-# These crash with `Internal error: Too many profiled sections, "increase MAX_NR_TIMED_SECTIONS`:
-# ```py
-# 7: `[                           'trans-H', 'trans-O', 'trans-Charge', 'trans-Ca', 'trans-Cl', 'trans-K', 'trans-N']`       ]`
-# ```
 
 # %%
 # write updated simulation input files
@@ -925,6 +893,10 @@ spdis = bud_flow.get_data(text="DATA-SPDIS")
 
 
 # %%
+# Conc is a nested array of these shapes
+display(conc.shape, conc[0].shape)
+
+# %%
 # plot head
 f = 101
 fig = plt.figure(num=f, figsize=(18, 5))
@@ -932,27 +904,39 @@ plt.plot(times_h, head[:, wel_lay, 0, wel_cellnum], marker=".")
 f = f + 1
 
 
+# %% [markdown]
+# ### Conc Timeseries near Well 
+
 # %%
 # Create list of components to plot based on intersection with transported components
 components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
 components_to_plot
 
 # %%
-component_name_l
-
-# %%
-
-
 k = wel_lay  # layer index
 cnum = wel_cellnum  # cell number
 for c in range(len(component_name_l)):
-    fig = plt.figure(num=101, figsize=(10, 5))
-    plt.plot(times_c[c], conc[c][:, k, 0, cnum], label=component_name_l[c])
-    plt.title("[" + str(k) + "," + str(cnum) + "]")
-    plt.legend()
+    if component_name_l[c] in components_to_plot:
+        fig = plt.figure(num=101, figsize=(10, 5))
+        plt.plot(times_c[c], conc[c][:, k, 0, cnum], label=component_name_l[c])
+        plt.title("[" + str(k) + "," + str(cnum) + "]")
+        plt.legend()
 
+# %%
+# Get Concentration Values
+c = 4
+time = 5
+layer = 2
+cell_num = wel_cellnum-20
+print(component_name_l[4], cell_num)
+conc[c][0:time, layer, 0, cell_num]
 
+# %% [markdown]
+# ### temp and tds gwt output
+
+# %%
 # # temp and tds gwt output
+
 # temp_tds_l = ["temp", "tds"]
 # temp_tds_output = utils.get_concentrations(sim, temp_tds_l)
 # times_temptds = utils.get_times_c(sim, temp_tds_l)
@@ -974,11 +958,10 @@ for c in range(len(component_name_l)):
 #     linecollection = mapview.plot_grid()
 #     cb = plt.colorbar(patch_collection, shrink=0.75)
 
+# %% [markdown]
+# ### Grid Cell Map
 
-# xsection
-gwf_name = "flow"
-gwf = sim.get_model(gwf_name)
-
+# %%
 # plot map view of grid showing order of grid cell ids and vertices from:
 # https://modflow6-examples.readthedocs.io/en/latest/_notebooks/ex-gwf-u1disv.html
 fig = plt.figure(figsize=(6,6))
@@ -1016,7 +999,11 @@ for i in range(v.shape[0]):
     )
 plt.show()
 
+# %% [markdown]
+# ### Conc Cross Sections
 
+# %%
+# xsection
 # to plot a cross section with disv, you have to make a line to plot along
 
 line = np.array([(694298, 1025429), (6999092, 1025429)])
@@ -1035,9 +1022,10 @@ linecollection = mapview.plot_grid()
 lc = plt.plot(line.T[0], line.T[1], "r--", lw=0.8)
 plt.show()
 
+# %%
 # creates a cross section along the line specified above for each timestep in t_l
 s = 4  # solute index for Cl
-t_l = [0, 1, 10, 25, 50, -1]  # list of timestep index (NOT actual time/days)
+t_l = [1, 10, 25, 50, -1]  # list of timestep index (NOT actual time/days)
 normalize = True
 if normalize == True:
     scale = 50
@@ -1047,7 +1035,7 @@ for t in t_l:
     qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(
         spdis[t], gwf, head=head[t]
     )
-    fig = plt.figure(figsize=(18, 5))
+    fig = plt.figure(figsize=(9, 2.5))
     ax = fig.add_subplot(1, 1, 1)
     if normalize == True:
         ax.set_title(
@@ -1084,6 +1072,10 @@ for t in t_l:
     cb = plt.colorbar(patch_collection, shrink=0.75)
     ## TODO: add a legend for the quiver to relate to spdis magnitude when noralized = False..?
 
+# %% [markdown]
+# ### Conc Map View
+
+# %%
 s = 3  # solute index for Ca
 t_l = [0, 1, 10, 50, 200, 400, -1]  # list of timestep index (NOT actual time/days)
 for t in t_l:
@@ -1095,6 +1087,9 @@ for t in t_l:
     linecollection = mapview.plot_grid()
     cb = plt.colorbar(patch_collection, shrink=0.75)
 
+# %%
+# Cause BREAK
+assert 1 != 1
 
 # %% [markdown]
 # # Reactive Transport Simulation

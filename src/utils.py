@@ -154,7 +154,7 @@ def get_times_c(sim, solute_names):
 
 
 def get_concentrations(sim, solute_names):
-    """loads concentration for all solutes for full simulation lenght"""
+    """loads concentration for all solutes for full simulation length"""
     """ conc[0].shape = 
         (240, 2, 1, 80)
         ^     ^  ^  ^
