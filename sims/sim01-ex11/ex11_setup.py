@@ -133,6 +133,9 @@ simulation_name
 sim_ws = working_dir / 'ws'
 sim_ws.mkdir(parents=True, exist_ok=True)
 
+# %% [markdown]
+# ### Reset Workspace
+
 # %%
 # Delete previous contents from simulation
 if sim_ws.exists():
@@ -389,6 +392,81 @@ domain_size
 # %%
 # TODO: Calculate volume of cells near well screen
 cells_df.loc[494:496]
+
+# %%
+# Get Cell Index to (cellid_layer, cellid_cell) mapping
+
+# %%
+nxyz/nlay
+
+# %%
+np.tile(np.arange(0,nlay), nxyz/nlay)
+
+# %%
+pd.DataFrame(
+    index=np.arange(0,nxyz),
+    columns=[
+        np.arange(0,nlay),
+        np.arange(0,ncpl),
+        
+    ]
+)
+
+# %%
+np.arange(0,nxyz)
+
+# %% [markdown]
+# ### Grid Cell Map
+
+# %%
+# Turn on interactive
+# %matplotlib widget
+
+# %%
+# plot map view of grid showing order of grid cell ids and vertices from:
+# https://modflow6-examples.readthedocs.io/en/latest/_notebooks/ex-gwf-u1disv.html
+fig = plt.figure(figsize=(6,6))
+fig.tight_layout()
+ax = fig.add_subplot(1, 1, 1, aspect="equal")
+pmv = flopy.plot.PlotMapView(model=gwf, ax=ax, layer=0)
+pmv.plot_grid()
+pmv.plot_bc(name="ghb", alpha=0.75)
+pmv.plot_bc(name="wel", alpha=0.75)
+ax.set_xlabel("x position (m)")
+ax.set_ylabel("y position (m)")
+for i, (x, y) in enumerate(
+    zip(gwf.modelgrid.xcellcenters, gwf.modelgrid.ycellcenters)
+):
+    ax.text(
+        x,
+        y,
+        f"{i + 1}",
+        fontsize=6,
+        horizontalalignment="center",
+        verticalalignment="center",
+    )
+v = gwf.disv.vertices.array
+ax.plot(v["xv"], v["yv"], "yo")
+for i in range(v.shape[0]):
+    x, y = v["xv"][i], v["yv"][i]
+    ax.text(
+        x,
+        y,
+        f"{i + 1}",
+        fontsize=5,
+        color="red",
+        horizontalalignment="center",
+        verticalalignment="center",
+    )
+plt.show()
+
+# %% [markdown]
+# #### Screenshot of Grid Cell Map
+# ![image.png](attachment:image.png)
+
+# %%
+# Turn off interactive widget
+# %matplotlib inline
 
 # %% [markdown]
 # ## Read Time Step Info
@@ -896,12 +974,16 @@ spdis = bud_flow.get_data(text="DATA-SPDIS")
 # Conc is a nested array of these shapes
 display(conc.shape, conc[0].shape)
 
+# %% [markdown]
+# ### Head
+
 # %%
 # plot head
 f = 101
 fig = plt.figure(num=f, figsize=(18, 5))
 plt.plot(times_h, head[:, wel_lay, 0, wel_cellnum], marker=".")
 f = f + 1
+fig.show()
 
 
 # %% [markdown]
@@ -924,11 +1006,11 @@ for c in range(len(component_name_l)):
 
 # %%
 # Get Concentration Values
-c = 4
+c = -1
 time = 5
 layer = 2
-cell_num = wel_cellnum-20
-print(component_name_l[4], cell_num)
+cell_num = wel_cellnum + 20
+print(component_name_l[c], cell_num)
 conc[c][0:time, layer, 0, cell_num]
 
 # %% [markdown]
@@ -957,47 +1039,6 @@ conc[c][0:time, layer, 0, cell_num]
 #     )  # ,vmin=26.600, vmax=26.61)
 #     linecollection = mapview.plot_grid()
 #     cb = plt.colorbar(patch_collection, shrink=0.75)
-
-# %% [markdown]
-# ### Grid Cell Map
-
-# %%
-# plot map view of grid showing order of grid cell ids and vertices from:
-# https://modflow6-examples.readthedocs.io/en/latest/_notebooks/ex-gwf-u1disv.html
-fig = plt.figure(figsize=(6,6))
-fig.tight_layout()
-ax = fig.add_subplot(1, 1, 1, aspect="equal")
-pmv = flopy.plot.PlotMapView(model=gwf, ax=ax, layer=0)
-pmv.plot_grid()
-pmv.plot_bc(name="ghb", alpha=0.75)
-pmv.plot_bc(name="wel", alpha=0.75)
-ax.set_xlabel("x position (m)")
-ax.set_ylabel("y position (m)")
-for i, (x, y) in enumerate(
-    zip(gwf.modelgrid.xcellcenters, gwf.modelgrid.ycellcenters)
-):
-    ax.text(
-        x,
-        y,
-        f"{i + 1}",
-        fontsize=6,
-        horizontalalignment="center",
-        verticalalignment="center",
-    )
-v = gwf.disv.vertices.array
-ax.plot(v["xv"], v["yv"], "yo")
-for i in range(v.shape[0]):
-    x, y = v["xv"][i], v["yv"][i]
-    ax.text(
-        x,
-        y,
-        f"{i + 1}",
-        fontsize=5,
-        color="red",
-        horizontalalignment="center",
-        verticalalignment="center",
-    )
-plt.show()
 
 # %% [markdown]
 # ### Conc Cross Sections
@@ -1089,7 +1130,7 @@ for t in t_l:
 
 # %%
 # Cause BREAK
-assert 1 != 1
+# assert 1 != 1
 
 # %% [markdown]
 # # Reactive Transport Simulation
@@ -1100,4 +1141,26 @@ assert 1 != 1
 reaction_model.run()
 
 # %% [markdown]
+# ## Visualize MF6RTM Results
+
+# %%
+sout_df = pd.read_csv(
+    sim_ws / 'sout.csv', 
+    sep = ',', 
+    skipinitialspace=True, 
+    index_col=[0],
+)
+sout_df.info()
+sout_df.head()
+
+# %%
+sout_df.cell
+
+# %%
+cell_num = 511
+sout_df[(sout_df.cell == cell_num)].plot(y=['Na', 'K'], logy=False)
+
+# %% [markdown]
 # # END
+
+# %%
