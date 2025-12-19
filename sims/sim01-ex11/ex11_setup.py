@@ -175,7 +175,7 @@ for folder in folders:
 # %%
 # Set filepath for the MF6 simulation configuration file
 sim_nam_file_path = sim_ws / "mfsim.nam"
-assert sim_nam_file_path.exists(), "MF6 sim file exists!"
+assert sim_nam_file_path.exists()
 sim_nam_file_path
 
 # %%
@@ -200,20 +200,21 @@ for file in chem_input_files:
 # Path to PHREEQC Block Input CSV Files
 solutions_filepath = sim_ws / "chem_solutions.csv"
 exchanges_filepath = sim_ws / "chem_exchanges.csv"
-print("PHREEQC input files exist?", solutions_filepath.exists(), exchanges_filepath.exists(), )
+assert solutions_filepath.exists() and exchanges_filepath.exists()
 
 # %%
 # Path to file with PHREEQC Input "postfix" instructions
 # to be appended to the PHREEQC Input file (*.pqi) created by mf6rtm
 postfix_filepath = sim_ws /  'chem_postfix.phqr'
-postfix_filepath.exists()
+assert postfix_filepath.exists()
 
 # %%
 # Select PHREEQC database file
-phreeqc_database_file = "phreeqc.dat"
+# phreeqc_database_file = "phreeqc.dat" # used in Ex6?
+phreeqc_database_file = 'pht3d_datab.dat' # used in Ex4
 phreeqc_databases_path = repo_path / "data" / "chem_databases"
 phreeqc_database_filepath = phreeqc_databases_path / phreeqc_database_file
-print("PHREEQC database file exists?", phreeqc_database_filepath.exists())
+assert phreeqc_database_filepath.exists(), "PHREEQC database file missing"
 
 # %%
 # Paths to PHREEQC configuration files that will be created by mf6trm
@@ -389,31 +390,55 @@ vertices_df
 domain_size = vertices_df.max() - vertices_df.min()
 domain_size
 
-# %%
-# TODO: Calculate volume of cells near well screen
-cells_df.loc[494:496]
+# %% [markdown]
+# ### Cell Volumes
 
 # %%
-# Get Cell Index to (cellid_layer, cellid_cell) mapping
+### Calculate grid cell volume
+cell2D = grid_package.cell2d.get_data()
+cell2D_df = pd.DataFrame.from_records(cell2D, index='icell2d')
+vertices = grid_package.vertices.get_data()
+vertices_df = pd.DataFrame.from_records(vertices, index='iv')
+top = grid_package.top.array
+botm = grid_package.botm.array
+
+### Calculate surface area of each grid cell within a single layer
+for cell in range(len(cell2D_df)):
+    ### get vertice coordinates to calc surface area
+    temp_cell_info = cell2D_df.iloc[[cell]]
+    # read each vert_1 - 5
+    icverts = temp_cell_info.filter(like="icvert_").iloc[0].to_list()
+    # remove Nones
+    icverts_clean = [int(v) for v in icverts if v is not None]
+    # look up (x,y) and create x and y arrays
+    x_l = vertices_df.loc[icverts_clean,"xv"].to_numpy()
+    y_l = vertices_df.loc[icverts_clean,"yv"].to_numpy()
+    # calculate surface area based on min/max x/y from array
+    surface_area = (np.max(x_l)-np.min(x_l)) * (np.max(y_l) - np.min(y_l))
+    cell2D_df.loc[cell,'surface_area'] = surface_area
+
+### Calc layer thickness for each layer
+# initialize thickness array
+thickness = np.zeros_like(botm)
+# for layer 1:
+thickness[0] = top - botm[0]
+# for layers 2:nlay
+thickness[1:] = botm[:-1] - botm[1:]
+
+### Calculate volume for each grid cell
+# initialize volume array
+cell_volumes = np.zeros((nlay,ncpl))
+# calculate volume for entire grid
+for k in range(nlay):
+    cell_volumes[k,:] = cell2D_df['surface_area'].to_numpy() * thickness[k,:]
 
 # %%
-nxyz/nlay
+# volume of cells near well screen
+cell_volumes[2, 490:500]
 
 # %%
-np.tile(np.arange(0,nlay), nxyz/nlay)
-
-# %%
-pd.DataFrame(
-    index=np.arange(0,nxyz),
-    columns=[
-        np.arange(0,nlay),
-        np.arange(0,ncpl),
-        
-    ]
-)
-
-# %%
-np.arange(0,nxyz)
+# TODO: Get flat Cell Index to (cellid_layer, cellid_cell) mapping
+# for exploring phreeqcrm outputs
 
 # %% [markdown]
 # ### Grid Cell Map
@@ -469,25 +494,60 @@ plt.show()
 # %matplotlib inline
 
 # %% [markdown]
-# ## Read Time Step Info
+# ## Read Time Info
+
+# %% [markdown]
+# ### Time Steps
 
 # %%
 # Get time discretization info from the `tdis` package
 tdis = sim.tdis
 nper = tdis.nper.get_data()          # number of stress periods
-perioddata = tdis.perioddata.get_data()
+perioddata = tdis.perioddata.get_data() # record array
 nstp = perioddata['nstp']            # number of timesteps per stress period
 perlen = perioddata['perlen']        # length of stress periods
 tsmult = perioddata['tsmult']        # timestep multiplier
 t_units = tdis.time_units.get_data() # units
 
 print(f'{nper} stress periods. Units: {t_units}')
-print(nstp)
-print(perlen)
-print(tsmult)
+perioddata
+
+# %%
+pd.DataFrame.from_records(perioddata)
+
+# %%
+################################################################################
+# Modify number of stress periods to check output before kernel crash.
+
+# For modifying the total number of stress periods tdis and the stress period
+# data for any boundary condition packages must be updated. Below resets the 
+# number of stress periods (nper) to the first 5 stress periods.  
+reduce_nper = False 
+if reduce_nper == True:
+# Modify tdis nper
+    tdis = sim.get_package("tdis")
+    tdis_spd = tdis.perioddata.get_data(full_data=True)
+    old_nper = tdis.nper.get_data()
+    # only keep first 7 spds
+    tdis.nper = 7
+    tdis_spd = tdis_spd[0:7]
+    tdis.perioddata.set_data(tdis_spd)
+
+    # Modify wel spd for new nper
+    wel = gwf.get_package('wel')
+    for sp in range(tdis.nper.get_data(),old_nper): wel.stress_period_data.remove_transient_key(sp)
+
+    # Modify chd spd for new nper
+    chd = gwf.get_package('chd')
+    for sp in range(tdis.nper.get_data(),old_nper): chd.stress_period_data.remove_transient_key(sp)
+
+    # Modify ghb spd for new nper
+    ghb = gwf.get_package('ghb')
+    for sp in range(tdis.nper.get_data(),old_nper): ghb.stress_period_data.remove_transient_key(sp)
+################################################################################
 
 # %% [markdown]
-# ## Read Stress Period Info
+# ### Stress Period Data
 
 # %%
 # boundary conditions for chem_stress
@@ -500,14 +560,19 @@ if wel.has_stress_period_data == True:
     spd_wel_dict = wel.stress_period_data.get_data(full_data=True) # full data is default
 display(spd_wel_dict)
 
-# %%
 # modify well q to try and address convergence issues
-for sp in range(len(spd_wel_dict)):
-    spd_wel_dict[sp]['q'] = spd_wel_dict[sp]['q'] / 2.
+change_well_q = False
+if change_well_q == True:
+    for sp in range(1,len(spd_wel_dict)):
+        if sp > 0:
+            spd_wel_dict[sp]['q'] = spd_wel_dict[sp]['q'] / 2.
+            #spd_wel_dict[sp]['q'] = abs(spd_wel_dict[sp]['q'] / 2.)
+        #else:
+        #    spd_wel_dict[sp]['q'] = 0.
 
-# reset wel stress period data using modified q
-wel.stress_period_data = spd_wel_dict
-spd_wel_dict_edit = wel.stress_period_data.get_data(full_data=True)
+    # reset wel stress period data using modified q
+    wel.stress_period_data = spd_wel_dict
+    spd_wel_dict_edit = wel.stress_period_data.get_data(full_data=True)
 
 # %%
 # data stored in a dictionary of numpy record arrays, 
@@ -657,6 +722,9 @@ exchanger.ic
 
 # %% [markdown]
 # ### Create a reaction model (RM) instance using the `mf6rtm` `Mup3d` class
+
+# %%
+phreeqc_database_filepath
 
 # %%
 # create model class, with solution initial conditions
@@ -1154,10 +1222,13 @@ sout_df.info()
 sout_df.head()
 
 # %%
+sout_df.K.describe()
+
+# %%
 sout_df.cell
 
 # %%
-cell_num = 511
+cell_num = 510
 sout_df[(sout_df.cell == cell_num)].plot(y=['Na', 'K'], logy=False)
 
 # %% [markdown]
