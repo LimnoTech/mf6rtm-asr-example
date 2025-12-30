@@ -72,17 +72,14 @@
 import os
 import shutil
 from pathlib import Path
-from importlib import reload
 
 import numpy as np
-from numpy.lib import recfunctions as rfn
 import pandas as pd
 import matplotlib.pyplot as plt
 # %matplotlib widget
 
 import flopy
 from modflowapi import ModflowApi
-import phreeqcrm
 
 # %%
 # Import the MFRTM package, installed using `conda develop`
@@ -748,6 +745,108 @@ for t in t_l:
     patch_collection = mapview.plot_array(conc[s][t, :, :, :])  # ,vmin=0., vmax=0.2)
     linecollection = mapview.plot_grid()
     cb = plt.colorbar(patch_collection, shrink=0.75)
+
+# %% [markdown]
+# ## Calculate Cr number (Courant Condition)
+
+# %%
+porosity = 0.3
+
+# %%
+################################################################################
+##### calculate Cr number (Courant Condition)
+
+### get grid cell dimensions
+
+cell2D = grid_package.cell2d.get_data()
+cell2D_df = pd.DataFrame.from_records(cell2D, index='icell2d')
+vertices = grid_package.vertices.get_data()
+vertices_df = pd.DataFrame.from_records(vertices, index='iv')
+top = grid_package.top.array
+botm = grid_package.botm.array
+
+### calculate surface area of each grid cell within a single layer
+for cell in range(len(cell2D_df)):
+    ### get vertice coordinates to calculate dx and dy
+    temp_cell_info = cell2D_df.iloc[[cell]]
+    # read each vert_1 - 5
+    icverts = temp_cell_info.filter(like="icvert_").iloc[0].to_list()
+    # remove Nones
+    icverts_clean = [int(v) for v in icverts if v is not None]
+    # look up (x,y) and create x and y arrays
+    x_l = vertices_df.loc[icverts_clean,"xv"].to_numpy()
+    y_l = vertices_df.loc[icverts_clean,"yv"].to_numpy()
+    # calculate dx and dy 
+    dx_temp = (np.max(x_l)-np.min(x_l))
+    dy_temp = (np.max(y_l)-np.min(y_l))
+    surface_area = (np.max(x_l)-np.min(x_l)) * (np.max(y_l) - np.min(y_l))
+    cell2D_df.loc[cell,'dx'] = dx_temp
+    cell2D_df.loc[cell,'dy'] = dy_temp
+
+# convert dx and dy to numpy array
+dx = cell2D_df['dx'].to_numpy()
+dy = cell2D_df['dy'].to_numpy()
+
+# calc layer dz for each layer
+# initialize dz array
+dz = np.zeros_like(botm)
+# for layer 1:
+dz[0] = top - botm[0]
+# for layers 2:nlay
+dz[1:] = botm[:-1] - botm[1:]
+
+### read in specific discharge (flow through a cross section)
+bud_flow = gwf.output.budget()
+spdis = bud_flow.get_data(text="DATA-SPDIS")
+head = gwf.output.head().get_alldata()
+
+qx_l = []
+qy_l = []
+qz_l = []
+
+for t in range(len(head)):
+    qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(
+        spdis[0], gwf, head=head[0]
+    )
+    qx_l.append(qx)
+    qy_l.append(qy)
+    qz_l.append(qz)
+
+"""qx, qy, qz are ndarrays of size (nlay, nrow, ncol) for a structured grid or 
+size (nlay, ncpl) for an unstructured grid. The sign of qy is such that the y 
+axis is considered to increase in the north direction. The sign of qz is such 
+that the z axis is considered to increase in the upward direction. Note: if a 
+head array is provided, inactive and dry cells are set to NaN."""
+
+### calculate pore water velocity (q/n) (flow through the pores)
+v_pw_x = np.array(qx_l)/porosity
+v_pw_y = np.array(qy_l)/porosity
+v_pw_z = np.array(qz_l)/porosity
+
+### calculate Cr number (v_pore_water * dt / cell_dimention)
+Cr = np.full_like(v_pw_x, np.nan)
+dt = float(perlen[0]/nstp[0]) ## TODO: implement for variable dt
+
+for t in range(Cr.shape[0]):
+    Cr_x_temp = abs(v_pw_x[t]) * dt / dx
+    Cr_y_temp = abs(v_pw_y[t]) * dt / dy
+    Cr_z_temp = abs(v_pw_z[t]) * dt / dz
+    Cr[t] = np.round(np.maximum(np.maximum(Cr_x_temp,Cr_y_temp),Cr_z_temp),decimals=5)
+
+print('Cr > 1:  ' + str(np.where(Cr>1.)))
+print('Cr > 0.5:  ' + str(np.where(Cr>0.5)))
+
+# plot Cr map view
+t_l = [0, 1, 2, 5, 8, -1]  # list of timestep index (NOT actual time/days)
+for t in t_l:
+    fig = plt.figure(num=f,figsize=(6, 4))
+    ax = fig.add_subplot(1, 1, 1, aspect="auto")
+    ax.set_title("Cr at timestep index t=" + str(t))
+    mapview = flopy.plot.PlotMapView(gwf, layer=2)  # ,extent=(0,0.08,0,1.))
+    patch_collection = mapview.plot_array(Cr[t,:,:])  # ,vmin=0., vmax=0.2)
+    linecollection = mapview.plot_grid()
+    cb = plt.colorbar(patch_collection, shrink=0.75)
+    f = f + 1
 
 # %% [markdown]
 # # END

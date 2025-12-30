@@ -16,11 +16,11 @@
 # ---
 
 # %% [markdown]
-# # ASR Test Simulation: Phreeqc Example 11 Chemistry
+# # ASR Simulation with Chemistry from Phreeqc Example 11 
 #
-# NOTE: This [Jupytext](https://jupytext.readthedocs.io/en/latest/index.html) paired notebook, with paired `.py` and `.ipynb` files. 
-# - If using VS Code, install the the [Jupytext Sync extension](https://jupytext.readthedocs.io/en/latest/vs-code.html) for maximum benefit.
+# This simulation adds **cation exhange reaction chemistry** -- from the PHREEQC-3 Manual's Example 11 (Parkhurst and Appelo 2013) -- to the 3D transport models of the simple ASR test case.
 #
+# For information and exploration of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`.
 #
 # The workflow for this example:
 # - Read geochemical components and their initial and boundary concentrations from PHREEQC input files
@@ -29,41 +29,15 @@
 # - Run the modified Modflow 6 for conservative transport of all components (i.e. no coupling to PHREEQC)
 # - Run the coupled Modflow 6 & PHREEQC models for the entire simulation
 #
-#
-#
-# ## Simple ASR Test Case
-#
-# Grid type: DISV  
-# Grid Size: ~4800 ft x 4700 ft  
-# Grid cells 1.2 ft – 155 ft  
-# Cells per layer = 1032  
-# Total cells = 5160  
-#
-# Grid Layers:
-#  - Layer 1: heads of all cells specified with CHD
-#  - Layer 2: side boundaries set with GHB
-#  - Layer 3: side boundaries set with GHB
-#  - Layer 4: side boundaries set with GHB
-#  - Layer 5: heads of all cells specified with CHD
-#
-# ASR Well simulated using WEL package
-#  - 21 Stress Periods
-#
-# New stress period when ASR pumping changes and at the start of each month
-#  - ~ 10-day time steps
-#  - Simulation run time ~25-30 seconds
-#
-# Simplifying assumptions:
-#  - ASR Well injected or extracted at a constant rate of 5 MGD
-#  - TDS and temperature of injected water was constant at 150 mg/L and 25C
-#  - GHBs were setup using map coverages in GMS.  Heads were pulled from the old KRASR SEAWAT local scale model at a few points along the test model boundary, then the map module was used to interpolate the heads to the boundary cells.  The head contours along the boundaries look a little strange during injection and recovery, but it should be ok for the purposes of the test model
-#  - TDS and temperature were assumed to be constant along the model boundaries but varied by model layer based on the KRASR local scale model results
-#  - Specific storage was constant for each layer
+# NOTE: This [Jupytext](https://jupytext.readthedocs.io/en/latest/index.html) paired notebook, with paired `.py` and `.ipynb` files. 
+# - If using VS Code, install the the [Jupytext Sync extension](https://jupytext.readthedocs.io/en/latest/vs-code.html) for maximum benefit.
 
 # %% [markdown]
 # # Installation and Setup
 #
-# Create a custom conda virtual environment can be created using the `environment.yml` file included in this repo.
+# Create a custom conda virtual environment can be created using the `environment.yml` file included in this repo. 
+#
+# Complet the setup by running the `01-GettingStarted.ipynb` notebook.
 
 # %% [markdown]
 # ## Python Imports
@@ -72,17 +46,13 @@
 import os
 import shutil
 from pathlib import Path
-from importlib import reload
 
 import numpy as np
-from numpy.lib import recfunctions as rfn
 import pandas as pd
 import matplotlib.pyplot as plt
-# %matplotlib widget
 
 import flopy
 from modflowapi import ModflowApi
-import phreeqcrm
 
 # %%
 # Import the MFRTM package, installed using `conda develop`
@@ -97,10 +67,6 @@ except AttributeError:
 
 # %%
 import utils # from this repo
-
-# %% [markdown]
-# NOTE: the notebook below runs from the `externalio` branch the upstream repo 
-# (Pablo's) https://github.com/p-ortega/mf6rtm/tree/feature/externalio
 
 # %% [markdown]
 # ### If you get `ModuleNotFoundError`
@@ -288,6 +254,8 @@ shutil.copy2(dll, sim_ws)
 # # Load Modflow 6 Simulation for Reactive Transport
 # To set up PhreeqcRM and MF6RTM simulation objects.
 # Modifies Modflow 6 input files to include transport models for all reactive transport species.
+#
+# For addtional information and exploration of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`
 
 # %%
 # Load simulation using Flopy
@@ -307,10 +275,7 @@ for model_name in sim.model_names:
     model = sim.get_model(model_name)
     if model.model_type == "gwf6":
         gwf = model
-        print(gwf.name)
-gwf.get_package_list()
 
-# %%
 # removes buy package from gwf model
 gwf.remove_package("buy")
 gwf.get_package_list()
@@ -352,58 +317,10 @@ for model_name in sim.model_names:
     print(f"{model_name}: ", model_type, grid_type.name, grid_units, nlay, ncpl)
 
 # %%
-### Calculate grid cell volume
-cell2D = grid_package.cell2d.get_data()
-cell2D_df = pd.DataFrame.from_records(cell2D, index='icell2d')
-vertices = grid_package.vertices.get_data()
-vertices_df = pd.DataFrame.from_records(vertices, index='iv')
-top = grid_package.top.array
-botm = grid_package.botm.array
-
-### Calculate surface area of each grid cell within a single layer
-for cell in range(len(cell2D_df)):
-    ### get vertice coordinates to calc surface area
-    temp_cell_info = cell2D_df.iloc[[cell]]
-    # read each vert_1 - 5
-    icverts = temp_cell_info.filter(like="icvert_").iloc[0].to_list()
-    # remove Nones
-    icverts_clean = [int(v) for v in icverts if v is not None]
-    # look up (x,y) and create x and y arrays
-    x_l = vertices_df.loc[icverts_clean,"xv"].to_numpy()
-    y_l = vertices_df.loc[icverts_clean,"yv"].to_numpy()
-    # calculate surface area based on min/max x/y from array
-    surface_area = (np.max(x_l)-np.min(x_l)) * (np.max(y_l) - np.min(y_l))
-    cell2D_df.loc[cell,'surface_area'] = surface_area
-
-### Calc layer thickness for each layer
-# initialize thickness array
-thickness = np.zeros_like(botm)
-# for layer 1:
-thickness[0] = top - botm[0]
-# for layers 2:nlay
-thickness[1:] = botm[:-1] - botm[1:]
-
-### Calculate volume for each grid cell
-# initialize volume array
-cell_volumes = np.zeros((nlay,ncpl))
-# calculate volume for entire grid
-for k in range(nlay):
-    cell_volumes[k,:] = cell2D_df['surface_area'].to_numpy() * thickness[k,:]
-
-# %%
-### Calculate grid cell volume
-### MOVED BELOW
-
-# %%
 # Use spatial discretization info from the last model
 # Calculate total number of grid cells
 nxyz = nlay * ncpl
 nxyz
-
-# %%
-# Get groundwater flow model object
-# defined above
-display(gwf.name, gwf.get_package_list())
 
 # %% [markdown]
 # ### Cell Spacing
@@ -417,15 +334,6 @@ celldata = grid_package.cell2d.get_data()
 # can be easily converted to pandas dataframes
 cells_df = pd.DataFrame.from_records(celldata, index='icell2d')
 cells_df
-
-# %%
-verticedata = grid_package.vertices.get_data()
-vertices_df = pd.DataFrame.from_records(verticedata, index='iv')
-vertices_df
-
-# %%
-domain_size = vertices_df.max() - vertices_df.min()
-domain_size
 
 # %% [markdown]
 # ### Cell Volumes
@@ -478,59 +386,6 @@ cell_volumes[2, 490:500]
 # for exploring phreeqcrm outputs
 
 # %% [markdown]
-# ### Grid Cell Map
-
-# %%
-# Turn on interactive
-# %matplotlib widget
-
-# %%
-# plot map view of grid showing order of grid cell ids and vertices from:
-# https://modflow6-examples.readthedocs.io/en/latest/_notebooks/ex-gwf-u1disv.html
-fig = plt.figure(figsize=(6,6))
-fig.tight_layout()
-ax = fig.add_subplot(1, 1, 1, aspect="equal")
-pmv = flopy.plot.PlotMapView(model=gwf, ax=ax, layer=0)
-pmv.plot_grid()
-pmv.plot_bc(name="ghb", alpha=0.75)
-pmv.plot_bc(name="wel", alpha=0.75)
-ax.set_xlabel("x position (m)")
-ax.set_ylabel("y position (m)")
-for i, (x, y) in enumerate(
-    zip(gwf.modelgrid.xcellcenters, gwf.modelgrid.ycellcenters)
-):
-    ax.text(
-        x,
-        y,
-        f"{i + 1}",
-        fontsize=6,
-        horizontalalignment="center",
-        verticalalignment="center",
-    )
-v = gwf.disv.vertices.array
-ax.plot(v["xv"], v["yv"], "yo")
-for i in range(v.shape[0]):
-    x, y = v["xv"][i], v["yv"][i]
-    ax.text(
-        x,
-        y,
-        f"{i + 1}",
-        fontsize=5,
-        color="red",
-        horizontalalignment="center",
-        verticalalignment="center",
-    )
-plt.show()
-
-# %% [markdown]
-# #### Screenshot of Grid Cell Map
-# ![image.png](attachment:image.png)
-
-# %%
-# Turn off interactive widget
-# %matplotlib inline
-
-# %% [markdown]
 # ## Read Time Info
 
 # %% [markdown]
@@ -552,37 +407,6 @@ perioddata
 # %%
 pd.DataFrame.from_records(perioddata)
 
-# %%
-################################################################################
-# Modify number of stress periods to check output before kernel crash.
-
-# For modifying the total number of stress periods tdis and the stress period
-# data for any boundary condition packages must be updated. Below resets the 
-# number of stress periods (nper) to the first 5 stress periods.  
-reduce_nper = False 
-if reduce_nper == True:
-# Modify tdis nper
-    tdis = sim.get_package("tdis")
-    tdis_spd = tdis.perioddata.get_data(full_data=True)
-    old_nper = tdis.nper.get_data()
-    # only keep first 7 spds
-    tdis.nper = 7
-    tdis_spd = tdis_spd[0:7]
-    tdis.perioddata.set_data(tdis_spd)
-
-    # Modify wel spd for new nper
-    wel = gwf.get_package('wel')
-    for sp in range(tdis.nper.get_data(),old_nper): wel.stress_period_data.remove_transient_key(sp)
-
-    # Modify chd spd for new nper
-    chd = gwf.get_package('chd')
-    for sp in range(tdis.nper.get_data(),old_nper): chd.stress_period_data.remove_transient_key(sp)
-
-    # Modify ghb spd for new nper
-    ghb = gwf.get_package('ghb')
-    for sp in range(tdis.nper.get_data(),old_nper): ghb.stress_period_data.remove_transient_key(sp)
-################################################################################
-
 # %% [markdown]
 # ### Stress Period Data
 
@@ -597,34 +421,12 @@ if wel.has_stress_period_data == True:
     spd_wel_dict = wel.stress_period_data.get_data(full_data=True) # full data is default
 display(spd_wel_dict)
 
-# modify well q to try and address convergence issues
-change_well_q = False
-if change_well_q == True:
-    for sp in range(1,len(spd_wel_dict)):
-        if sp > 0:
-            spd_wel_dict[sp]['q'] = spd_wel_dict[sp]['q'] / 2.
-            #spd_wel_dict[sp]['q'] = abs(spd_wel_dict[sp]['q'] / 2.)
-        #else:
-        #    spd_wel_dict[sp]['q'] = 0.
-
-    # reset wel stress period data using modified q
-    wel.stress_period_data = spd_wel_dict
-    spd_wel_dict_edit = wel.stress_period_data.get_data(full_data=True)
-
 # %%
-# data stored in a dictionary of numpy record arrays, 
-# each of which can be easily converted to a pandas dataframe
-stress_period_id = 3
-pd.DataFrame.from_records(spd_wel_dict[stress_period_id])
 
-# %%
-# flopy has a convenient dataframe interface 
-# that also includes, the auxilary data (i.e. components) when present
+# data stored in a dictionary of numpy record arrays
+# which allows easy concatination into a single dataframe, using
+# flopy dataframe interface that includes auxilary data (i.e. components) when present
 spd_wel_df_dict = wel.stress_period_data.dataframe
-spd_wel_df_dict[stress_period_id]
-
-# %%
-# ... which allows easy concatination into a single dataframe
 spd_wel_df = pd.concat(spd_wel_df_dict.values(), keys=spd_wel_df_dict.keys())
 spd_wel_df = spd_wel_df.droplevel(level=1)
 # spd_wel_df.index.set_names(['stress_period_id'], inplace=True)
@@ -632,7 +434,7 @@ spd_wel_df.info()
 spd_wel_df
 
 # %% [markdown]
-# NOTE: `cellid` is the cell identifier, and depends on the type of grid that is used for the simulation. 
+# NOTE: `cellid` is a cell identifier tuple, and depends on the type of grid that is used for the simulation. 
 # - For a structured grid that uses the DIS input file, CELLID is the layer, row, and column. 
 # - For a grid that uses the DISV input file, CELLID is the layer and CELL2D number. 
 # - If the model uses the unstructured discretization (DISU) input file, CELLID is the node number for the cell.
@@ -1049,7 +851,9 @@ utils.run_models(sim, silent=False)
 # %% [markdown]
 # ## Plot MF6 Transport Results with no Reactions
 #
-# When just running MF6, before any coupling
+# When just running MF6, before any coupling.
+#
+# For addtional result plots of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`
 
 # %%
 # lookup cell ID of wel package cell
@@ -1080,18 +884,6 @@ spdis = bud_flow.get_data(text="DATA-SPDIS")
 display(conc.shape, conc[0].shape)
 
 # %% [markdown]
-# ### Head
-
-# %%
-# plot head
-f = 101
-fig = plt.figure(num=f, figsize=(18, 5))
-plt.plot(times_h, head[:, wel_lay, 0, wel_cellnum], marker=".")
-f = f + 1
-fig.show()
-
-
-# %% [markdown]
 # ### Conc Timeseries near Well 
 
 # %%
@@ -1117,33 +909,6 @@ layer = 2
 cell_num = wel_cellnum + 20
 print(component_name_l[c], cell_num)
 conc[c][0:time, layer, 0, cell_num]
-
-# %% [markdown]
-# ### temp and tds gwt output
-
-# %%
-# # temp and tds gwt output
-
-# temp_tds_l = ["temp", "tds"]
-# temp_tds_output = utils.get_concentrations(sim, temp_tds_l)
-# times_temptds = utils.get_times_c(sim, temp_tds_l)
-# for c in range(len(temp_tds_l)):
-#     fig = plt.figure(figsize=(18, 5))
-#     plt.plot(times_temptds[c], temp_tds_output[c][:, k, 0, cnum])
-#     plt.title(temp_tds_l[c] + " [" + str(k) + "," + str(cnum) + "]")
-# # tds and temp plan view figures
-# s = 1  # temp_tds_l index
-# t_l = [0, 5, 10, 30, 50, -1]  # list of timestep index (NOT actual time/days)
-# for t in t_l:
-#     fig = plt.figure(figsize=(24, 4))
-#     ax = fig.add_subplot(1, 1, 1, aspect="auto")
-#     ax.set_title("conc of " + temp_tds_l[s] + " at timestep index t=" + str(t))
-#     mapview = flopy.plot.PlotMapView(gwf, layer=3)  # ,extent=(0,0.08,0,1.))
-#     patch_collection = mapview.plot_array(
-#         temp_tds_output[s][t, :, :, :]
-#     )  # ,vmin=26.600, vmax=26.61)
-#     linecollection = mapview.plot_grid()
-#     cb = plt.colorbar(patch_collection, shrink=0.75)
 
 # %% [markdown]
 # ### Conc Cross Sections
@@ -1223,7 +988,7 @@ for t in t_l:
 
 # %%
 s = 3  # solute index for Ca
-t_l = [0, 1, 10, 50, 200, 400, -1]  # list of timestep index (NOT actual time/days)
+t_l = [0, 1, 10, 50, -1]  # list of timestep index (NOT actual time/days)
 for t in t_l:
     fig = plt.figure(figsize=(24, 4))
     ax = fig.add_subplot(1, 1, 1, aspect="auto")
@@ -1232,10 +997,6 @@ for t in t_l:
     patch_collection = mapview.plot_array(conc[s][t, :, :, :])  # ,vmin=0., vmax=0.2)
     linecollection = mapview.plot_grid()
     cb = plt.colorbar(patch_collection, shrink=0.75)
-
-# %%
-# Cause BREAK
-# assert 1 != 1
 
 # %% [markdown]
 # # Reactive Transport Simulation
@@ -1249,6 +1010,17 @@ reaction_model.run()
 # ## Visualize MF6RTM Results
 
 # %%
+# read in mf6 conc results
+sim_rxn = flopy.mf6.MFSimulation.load(
+    sim_ws=sim_ws,
+    exe_name=mf6_exe,  #'mf6',
+    verbosity_level=0,
+)
+conc_rxn = utils.get_concentrations(sim_rxn, component_name_l)
+times_c_rxn = utils.get_times_c(sim_rxn, component_name_l)
+
+# %%
+# read in phreeqc results 
 sout_df = pd.read_csv(
     sim_ws / 'sout.csv', 
     sep = ',', 
@@ -1256,17 +1028,120 @@ sout_df = pd.read_csv(
     index_col=[0],
 )
 sout_df.info()
-sout_df.head()
+sout_df
 
 # %%
-sout_df.K.describe()
+# plot mf6 transport only, mf6 conc with rxn, and phreeqc
+k = 2 #wel_lay  # layer index
+cnum = 496 #wel_cellnum  # cell number
+colors_c     = ['paleturquoise','plum','gold','darkseagreen','cornflowerblue'] 
+colors_c_rxn = ['teal','purple','darkgoldenrod','darkgreen','midnightblue']
+f = 101 # Figure Number
+for c in range(len(component_name_l)):
+    if c>=3:
+        # print(component_name_l[c])
+        fig = plt.figure(num=f, figsize=(9, 5))
+        plt.plot(times_c[c], conc[c][:, k, 0, cnum], color=colors_c[c-3],label=component_name_l[c],marker='.',markersize=12)
+        plt.plot(times_c_rxn[c], conc_rxn[c][:, k, 0, cnum], color=colors_c_rxn[c-3], label=component_name_l[c]+'_rxn',marker='.')
+        plt.title("Grid Cell ID: [" + str(k) + "," + str(cnum) + "]")
+        leg = plt.legend(loc='center right', bbox_to_anchor=(1.17, 0.5))
+plt.xlabel('Time (d)')
+plt.ylabel('Concentration (mmol/kg)')
+plt.tight_layout()
+plt.show()
 
 # %%
-sout_df.cell
 
-# %%
-cell_num = 510
-sout_df[(sout_df.cell == cell_num)].plot(y=['Na', 'K'], logy=False)
+################################################################################
+### Plot cross section (xsect) of concentration of MF6RTM with rxn results
+################################################################################
+
+# OPTIONS # 
+plot_bcs = False # if True, plots boundary conditions for wel and chd package
+normalize = True # if True, specific discharge is normalized and only shows direction
+plot_spdis = False # if True, plots specific discharge on cross section
+# component_name_l = ['H', 'O', 'Charge', 'Ca', 'Cl', 'K', 'N', 'Na']
+s = 4  # solute index for Ca
+t_l = [0, 1,10,20, 30, 40, 50, 60, 80, -1]  # list of timestep index (NOT actual time/days)
+# OPTIONS #
+
+# to plot a cross section with disv, you have to make a line to plot along
+line = np.array([(694298, 1025435), (6999092, 1025435)]) # goes through wel cellID 496
+# creates a plot showing where the line is on the grid to make the cross section plot
+fig = plt.figure(num=f,figsize=(6, 4))
+ax = fig.add_subplot(1, 1, 1, aspect="auto")
+ax.set_title("Vertex Model Grid (DISV) with cross sectional line")
+# use PlotMapView to plot a DISV (vertex) model
+mapview = flopy.plot.PlotMapView(gwf, layer=1)  # ,extent=(0,0.08,0,1.))
+if plot_bcs == True:
+    mapview.plot_bc("WEL-1")
+    mapview.plot_bc("CHD-1")
+linecollection = mapview.plot_grid()
+# plot the line over the model grid
+lc = plt.plot(line.T[0], line.T[1], "r--", lw=0.8)
+plt.show()
+f = f + 1
+
+# creates a cross section along the line specified above for each timestep in t_l
+# reads concentration data from modflow6 output files for MF6RTM simulation
+sim = flopy.mf6.MFSimulation.load(
+    sim_ws=sim_ws,
+    exe_name=mf6_exe,
+    verbosity_level=0,
+)
+conc = utils.get_concentrations(sim, component_name_l)
+times_c = utils.get_times_c(sim, component_name_l)
+
+if normalize == True:
+    scale = 50
+else:
+    scale = 100
+for t in t_l:
+    qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(
+        spdis[t], gwf, head=head[t]
+    )
+    fig = plt.figure(num = f,figsize=(6, 5))
+    ax = fig.add_subplot(1, 1, 1)
+    if normalize == True:
+        ax.set_title(
+            "normalized specific discharge and conc of "
+            + component_name_l[s]
+            + " at timestep index t="
+            + str(t)
+        )
+    else:
+        ax.set_title(
+            "specific discharge and conc of "
+            + component_name_l[s]
+            + " at timestep index t="
+            + str(t)
+        )
+    xsect = flopy.plot.PlotCrossSection(model=gwf, line={"line": line})
+    patch_collection = xsect.plot_array(conc[s][t, :, :, :], vmin=0.0, vmax=1.2)
+    line_collection = xsect.plot_grid(linewidth=0.5)
+    if plot_spdis == True:
+        quiver = xsect.plot_vector(
+            qx,
+            qy,
+            qz,
+            head=head,
+            hstep=2,
+            normalize=normalize,
+            color="white",
+            scale=scale,  # changes arrow length
+            width=0.003,
+            headwidth=3,
+            headlength=3,
+            headaxislength=3,
+            zorder=10,
+        )
+    cb = plt.colorbar(patch_collection, shrink=0.75)
+    ## TODO: add a legend for the quiver to relate to spdis magnitude when noralized = False..?
+    plt.xlabel('distance (m)')
+    plt.ylabel('elevation (m)')
+    plt.tight_layout()
+    plt.show()
+    f = f + 1
 
 # %% [markdown]
 # # END
