@@ -1,6 +1,17 @@
+KNOBS
+  -iterations    100         ! Default: 100
+  -convergence_tolerance 1e-12  ! Default: 1e-8 or 1e-12 when -high_precision true
+  -tolerance     1e-19       ! Default: 1e-15 or smaller if double precision, typically 1e-12 to 1e-15
+  -step_size     50.         ! Default: 100.
+  -pe_step_size  7.          ! Default: 10. and should be smaller than step_size
+
+SOLUTION_SPECIES
+  H2O + 0.01e- = H2O-0.01
+  log_k -9.0
+
 SELECTED_OUTPUT
 -reset         false
--distance         false
+-distance      false
 -file          out.dat
 
 USER_PUNCH

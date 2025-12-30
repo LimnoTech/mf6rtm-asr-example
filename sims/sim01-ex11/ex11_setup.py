@@ -78,11 +78,11 @@ import numpy as np
 from numpy.lib import recfunctions as rfn
 import pandas as pd
 import matplotlib.pyplot as plt
-# # %matplotlib widget
+# %matplotlib widget
 
 import flopy
 from modflowapi import ModflowApi
-# import phreeqcrm
+import phreeqcrm
 
 # %%
 # Import the MFRTM package, installed using `conda develop`
@@ -239,15 +239,17 @@ print("MF6RTM-created PHREEQCRM YAML file exists?", phreeqcrm_yaml_filepath.exis
 use_version_installed_with_modflowapi = False
 # user = "Laren"
 user = "Anthony"
-# version = "6.4.2"
-version = "6.5.0"
 os = "macarm"
 
+# version = "6.4.2"
+version = "6.5.0"
+# version = "6.7.0.dev3"
+
 try:
-    mf6_exe = "mf6"
-    dll = "libmf6"
+    mf6_exe = Path(flopy.which("mf6"))
+    dll = mf6_exe.parent.parent / "lib" / "libmf6.dylib" # MacOS only for now
     mf6_version = !{mf6_exe} --version
-    mf6dll_version = ModflowApi("libmf6").get_version()
+    mf6dll_version = ModflowApi(dll).get_version()
     print(f"Executable & library installed with modflowapi: {mf6_version[1]}, dll: {mf6dll_version}")
 except Exception:
     print("Modflow executables not found in environment")
@@ -261,34 +263,26 @@ else:
         mf6_exe = mf6_bin_path / "mf6.exe"
         dll = mf6_bin_path / "libmf6.dll"
     elif user == "Anthony":
-        mf6_bin_path = repo_path / "bin" / f"mf{version}" / os
+        mf6_potential_paths = [
+            repo_path / "bin" / f"mf{version}" / os,
+            repo_path / "bin" / f"mf{version}_{os}" / "bin",
+        ]
+        for path in mf6_potential_paths:
+            if path.exists():
+                mf6_bin_path = path
         mf6_exe = mf6_bin_path / "mf6"
         dll = mf6_bin_path / "libmf6.dylib"
     else:
         print("Create a new user and set paths to mf6 and libmf6")
-
-mf6_version = !{mf6_exe} --version
-mf6dll_version = ModflowApi(dll).get_version()
-print(f"User-selected executable ({mf6_exe.exists()}): {mf6_version[1]}, dll: {mf6dll_version}")
+    mf6_version = !{mf6_exe} --version
+    mf6dll_version = ModflowApi(dll).get_version()
+    print(f"User-selected executable ({mf6_exe.exists()}): {mf6_version[1]}, dll: {mf6dll_version}")
 
 # %%
 # Copy executable and library to simulation workspace
 shutil.copy2(mf6_exe, sim_ws)
 shutil.copy2(dll, sim_ws)
 (sim_ws/mf6_exe.name).exists()
-
-# %% [markdown]
-# ## Utility Functions
-#
-# These functions are available in `src/utils.py`:
-# - `run_models()`
-# - `write_models()`
-# - `create_mf6_gwt()`
-# - `get_times_c()`
-# - `get_concentrations()`
-# - `convert_molL_gL()`
-# - `convert_molL_kgft3()`
-# - `modify_wel_spd()`
 
 # %% [markdown]
 # # Load Modflow 6 Simulation for Reactive Transport
@@ -356,6 +350,49 @@ for model_name in sim.model_names:
     nlay = grid_package.nlay.get_data()  # number of layers
     ncpl = grid_package.ncpl.get_data()  # number of cells per layer
     print(f"{model_name}: ", model_type, grid_type.name, grid_units, nlay, ncpl)
+
+# %%
+### Calculate grid cell volume
+cell2D = grid_package.cell2d.get_data()
+cell2D_df = pd.DataFrame.from_records(cell2D, index='icell2d')
+vertices = grid_package.vertices.get_data()
+vertices_df = pd.DataFrame.from_records(vertices, index='iv')
+top = grid_package.top.array
+botm = grid_package.botm.array
+
+### Calculate surface area of each grid cell within a single layer
+for cell in range(len(cell2D_df)):
+    ### get vertice coordinates to calc surface area
+    temp_cell_info = cell2D_df.iloc[[cell]]
+    # read each vert_1 - 5
+    icverts = temp_cell_info.filter(like="icvert_").iloc[0].to_list()
+    # remove Nones
+    icverts_clean = [int(v) for v in icverts if v is not None]
+    # look up (x,y) and create x and y arrays
+    x_l = vertices_df.loc[icverts_clean,"xv"].to_numpy()
+    y_l = vertices_df.loc[icverts_clean,"yv"].to_numpy()
+    # calculate surface area based on min/max x/y from array
+    surface_area = (np.max(x_l)-np.min(x_l)) * (np.max(y_l) - np.min(y_l))
+    cell2D_df.loc[cell,'surface_area'] = surface_area
+
+### Calc layer thickness for each layer
+# initialize thickness array
+thickness = np.zeros_like(botm)
+# for layer 1:
+thickness[0] = top - botm[0]
+# for layers 2:nlay
+thickness[1:] = botm[:-1] - botm[1:]
+
+### Calculate volume for each grid cell
+# initialize volume array
+cell_volumes = np.zeros((nlay,ncpl))
+# calculate volume for entire grid
+for k in range(nlay):
+    cell_volumes[k,:] = cell2D_df['surface_area'].to_numpy() * thickness[k,:]
+
+# %%
+### Calculate grid cell volume
+### MOVED BELOW
 
 # %%
 # Use spatial discretization info from the last model
@@ -724,9 +761,6 @@ exchanger.ic
 # ### Create a reaction model (RM) instance using the `mf6rtm` `Mup3d` class
 
 # %%
-phreeqc_database_filepath
-
-# %%
 # create model class, with solution initial conditions
 reaction_model = mf6rtm.mup3d.Mup3d(simulation_name, solutions, nlay, nrow, ncol)
 
@@ -780,9 +814,6 @@ ncomps_by_nxyz_conc_array = np.reshape(
     (len(reaction_model.components), -1),
 )
 ncomps_by_nxyz_conc_array[:,cell_index]
-
-# %%
-ncomps_by_nxyz_conc_array
 
 # %%
 # Get component concentrations for a selected grid cell
@@ -977,14 +1008,20 @@ spd_welchem_df
 
 # %%
 # modify tdis
-tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
-tdis_spd
-tdis_spd["nstp"] = tdis_spd["perlen"]  # each timestep = 1.0 days
-#tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
-# tdis_spd['nstp'][0] = 20 # set first stress period to 20 days with 1 timestep per day
-# tdis_spd['perlen'][0] = 20
-tdis_spd["nstp"]
-sim.get_package("tdis").perioddata.set_data(tdis_spd)
+change_nstp = True
+if change_nstp == True:
+    tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
+    #tdis_spd = tdis_spd[0:5]
+    #tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
+    #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
+    #for t in range(len(tdis_spd)):
+    #    tdis_spd['nstp'][t] = 1
+    #    tdis_spd['perlen'][t] = 1.
+    #tdis_spd['nstp'][0] = 20 # set first stress period to 20 days with 1 timestep per day
+    # tdis_spd['perlen'][0] = 20
+    tdis_spd['perlen'][-1] = 600.
+    tdis_spd['nstp'][-1] = 60
+    sim.get_package("tdis").perioddata.set_data(tdis_spd)
 
 # %%
 # Remove transport models for testing
