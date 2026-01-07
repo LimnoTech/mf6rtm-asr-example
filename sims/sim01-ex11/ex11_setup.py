@@ -587,6 +587,21 @@ reaction_model.solutions.data
 reaction_model.exchange_phases.data
 
 # %% [markdown]
+# ### Set Component H2O to transport excess H & O
+#
+# [`SetComponentH2O()`](https://usgs-coupled.github.io/phreeqcrm/namespacebmiphreeqcrm.html#a0e152e5b6933e3e6bd8c79245917639a) is a PhreeqcRM function to select whether to include H2O in the component list. 
+# - The concentrations of H and O must be known accurately (8 to 10 significant digits) for the numerical method of PHREEQC to produce accurate pH and pe values. 
+# - Because most of the H and O are in the water species, it may be more robust (require less accuracy in transport) to transport the excess H and O (the H and O not in water) and water. 
+# - The default setting (true) is to include water, excess H, and excess O as components. 
+# - A setting of false will include total H and total O as components. 
+# - `SetComponentH2O` must be called before `FindComponents`. 
+#
+# NOTE: The default for `mf6rtm` is FALSE, to use total H & O as components.
+
+# %%
+reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
+
+# %% [markdown]
 # ### Initialize IC Chemistry over Model Grid 
 # This creates a PhreeqcRM instance based on components in Solution Blocks assigned initial conditions over the grid. It then runs a PHREEQC time zero equilibrium calculation for inital speciation.
 
@@ -1007,6 +1022,12 @@ for t in t_l:
 reaction_model.run()
 
 # %% [markdown]
+#
+# Run times:
+# - 1.1133 mins w/ `SetComponentH20(False)`
+# - 1.1625 mins w/ `SetComponentH20(True)`
+
+# %% [markdown]
 # ## Visualize MF6RTM Results
 
 # %%
@@ -1031,6 +1052,13 @@ sout_df.info()
 sout_df
 
 # %%
+component_name_l
+
+# %%
+list_offset = len(component_name_l) - len(components_to_plot)
+list_offset
+
+# %%
 # plot mf6 transport only, mf6 conc with rxn, and phreeqc
 k = 2 #wel_lay  # layer index
 cnum = 496 #wel_cellnum  # cell number
@@ -1038,17 +1066,20 @@ colors_c     = ['paleturquoise','plum','gold','darkseagreen','cornflowerblue']
 colors_c_rxn = ['teal','purple','darkgoldenrod','darkgreen','midnightblue']
 f = 101 # Figure Number
 for c in range(len(component_name_l)):
-    if c>=3:
+    if component_name_l[c] in components_to_plot:
         # print(component_name_l[c])
         fig = plt.figure(num=f, figsize=(9, 5))
-        plt.plot(times_c[c], conc[c][:, k, 0, cnum], color=colors_c[c-3],label=component_name_l[c],marker='.',markersize=12)
-        plt.plot(times_c_rxn[c], conc_rxn[c][:, k, 0, cnum], color=colors_c_rxn[c-3], label=component_name_l[c]+'_rxn',marker='.')
+        plt.plot(times_c[c], conc[c][:, k, 0, cnum], color=colors_c[c-list_offset],label=component_name_l[c],marker='.',markersize=12)
+        plt.plot(times_c_rxn[c], conc_rxn[c][:, k, 0, cnum], color=colors_c_rxn[c-list_offset], label=component_name_l[c]+'_rxn',marker='.')
         plt.title("Grid Cell ID: [" + str(k) + "," + str(cnum) + "]")
         leg = plt.legend(loc='center right', bbox_to_anchor=(1.17, 0.5))
 plt.xlabel('Time (d)')
 plt.ylabel('Concentration (mmol/kg)')
 plt.tight_layout()
 plt.show()
+
+# %%
+component_name_l
 
 # %%
 
@@ -1061,7 +1092,7 @@ plot_bcs = False # if True, plots boundary conditions for wel and chd package
 normalize = True # if True, specific discharge is normalized and only shows direction
 plot_spdis = False # if True, plots specific discharge on cross section
 # component_name_l = ['H', 'O', 'Charge', 'Ca', 'Cl', 'K', 'N', 'Na']
-s = 4  # solute index for Ca
+s = component_name_l.index("Ca")  # solute index for Ca
 t_l = [0, 1,10,20, 30, 40, 50, 60, 80, -1]  # list of timestep index (NOT actual time/days)
 # OPTIONS #
 
