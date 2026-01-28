@@ -864,6 +864,21 @@ sim.write_simulation()
 #
 # To confirm that conservative transport is occuring as expected.
 
+# %%
+# utils.run_models(sim, silent=False)
+
+# %% [markdown]
+# ## Plot MF6 Transport Results with no Reactions
+#
+# When just running MF6, before any coupling.
+#
+# For addtional result plots of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`
+
+# %%
+# Create list of components to plot based on intersection with transported components
+components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
+components_to_plot
+
 # %% [markdown]
 # # Reactive Transport Simulation
 # Using MF6RTM
