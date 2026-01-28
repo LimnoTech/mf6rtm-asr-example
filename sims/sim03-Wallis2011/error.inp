@@ -1,0 +1,67 @@
+SOLUTION_RAW                 0 
+  -temp                      25
+  -pressure                  1
+  -potential                 0
+  -total_h                   110.68419287318
+  -total_o                   55.371598260982
+  -cb                        0.002248325457592
+  -density                   0.99810350616286
+  -viscosity                 0.89002391817733
+  -viscos_0                  0.89002391817733
+  -totals
+    As(3)                    9.9704252871677e-19
+    As(5)                    4.8340497398067e-25
+    Ca                       0.005224505383519
+    Cl                       0.00099704301212174
+    Fe(2)                    9.9704301212199e-19
+    H(0)                     8.8570831682486e-11
+    K                        9.7710215187931e-05
+    Mg                       0.0031905376387901
+    Na                       0.0010867768832127
+    O(0)                     9.9704301212174e-19
+    S(-2)                    1.7946774218191e-05
+    S(6)                     0.0073781182897022
+  -pH                        7.3
+  -pe                        -3.7
+  -mu                        0.024531669732476
+  -ah2o                      0.9997284329129
+  -mass_water                0.99704301212174
+  -soln_vol                  1
+  -total_alkalinity          1.2968083046415e-05
+  -activities
+    As(3)                    -18.003497940107
+    As(5)                    -30.247615896233
+    Ca                       -2.646781572416
+    Cl                       -3.068833790788
+    E                        3.7
+    Fe(2)                    -18.375107936683
+    H(0)                     -10.350000000051
+    K                        -4.0862090093975
+    Mg                       -2.842553871254
+    Na                       -3.0331977648027
+    O(0)                     -18.298576828691
+    S(-2)                    -4.9754344670609
+    S(6)                     -2.5393281044284
+  -gammas
+EXCHANGE_RAW                 0 
+  # EXCHANGE_MODIFY candidate identifiers #
+  -exchange_gammas           1
+  -component                 CaX2
+    # EXCHANGE_MODIFY candidate identifiers #
+    -totals
+      Ca                     1.7690243925352e-05
+      Fe                     1.4238475383528e-21
+      K                      1.266306413541e-07
+      Mg                     7.0146643491586e-06
+      Na                     2.8355280963905e-07
+      X                      4.9820000000014e-05
+    -charge_balance          0
+    -la                      0.72401886657944
+    -phase_proportion        0
+    -formula_z               0
+  # EXCHANGE_MODIFY candidates with new_def=true #
+  -new_def                   0
+  -solution_equilibria       0
+  -n_solution                -999
+  # Exchange workspace variables #
+  -totals

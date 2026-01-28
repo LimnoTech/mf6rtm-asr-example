@@ -1,6 +1,8 @@
 component,solution1_ic_molperL,solution2_bc_molperL
 pH,7.3,7.7
 pe,-3.7,13.0
+C(+4),2.38e-03,1.04e-03
+C(-4),7.80E-06,0.0
 Ca,5.24e-03,1.10e-03
 Na,1.09e-03,2.00e-03
 Cl,1.00e-03,9.10e-04
