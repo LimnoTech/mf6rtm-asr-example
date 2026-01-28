@@ -1,4 +1,4 @@
-component,solution1_ic,solution2_bc
+component,solution1_ic_molperL,solution2_bc_molperL
 pH,7.0,7.0
 pe,12.5,12.5
 Ca,0.0,0.6e-3

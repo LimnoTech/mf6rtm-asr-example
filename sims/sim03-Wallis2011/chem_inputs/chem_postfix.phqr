@@ -1,0 +1,34 @@
+KNOBS
+  -iterations    100         ! Default: 100
+  -convergence_tolerance 1e-12  ! Default: 1e-8 or 1e-12 when -high_precision true
+  -tolerance     1e-19       ! Default: 1e-15 or smaller if double precision, typically 1e-12 to 1e-15
+  -step_size     50.         ! Default: 100.
+  -pe_step_size  7.          ! Default: 10. and should be smaller than step_size
+
+SOLUTION_SPECIES
+  H2O + 0.01e- = H2O-0.01
+  log_k -9.0
+
+SELECTED_OUTPUT
+-reset         false
+-distance      false
+-file          out.dat
+
+USER_PUNCH
+    -headings time cell O0 Ca Cl Fe2 Fe3 K Mg \
+              N3 NO3 Na S_2 SO4 Si Amm N0 \
+              pH pe \
+              EQUI_Ferrihydrite \
+              MOL_CaX2 MOL_FeX2 MOL_KX MOL_MgX2 MOL_NaX \
+              KIN_Pyrite
+    -start
+    10 PUNCH TOTAL_TIME/86400
+    11 PUNCH cell_no
+    12 PUNCH TOT("Orgc")
+    20 PUNCH TOT("O(0)"), TOT("Ca"), TOT("Cl"), TOT("Fe(2)"), TOT("Fe(3)"), TOT("K"), TOT("Mg")
+    21 PUNCH TOT("N(3)"), TOT("N(5)"), TOT("Na"), TOT("S(-2)"), TOT("S(6)"), TOT("Si"), TOT("Amm"), TOT("N(0)")
+    30 PUNCH -LA("H+"), -LA("e-")
+    60 PUNCH EQUI("Ferrihydrite")
+    70 PUNCH MOL("CaX2"), MOL("FeX2"), MOL("KX"), MOL("MgX2"), MOL("NaX")
+    -end
+END
