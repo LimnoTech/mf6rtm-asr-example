@@ -805,6 +805,13 @@ for t in range(Cr.shape[0]):
 print('Cr > 1:  ' + str(np.where(Cr>1.)))
 print('Cr > 0.5:  ' + str(np.where(Cr>0.5)))
 
+# %%
+Cr.shape
+
+# %%
+pd.DataFrame(Cr[:,2,:]).T.describe()
+
+# %%
 # plot Cr map view
 t_l = [0, 1, 2, 5, 8, -1]  # list of timestep index (NOT actual time/days)
 for t in t_l:

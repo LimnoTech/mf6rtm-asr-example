@@ -1,8 +1,12 @@
 BEGIN OPTIONS
-  BUDGET FILEOUT trans-TDS.cbc
-  CONCENTRATION FILEOUT trans-TDS.ucn
+  BUDGET  FILEOUT  trans-TDS_output/trans-TDS.cbc
+  CONCENTRATION  FILEOUT  trans-TDS_output/trans-TDS.ucn
 END OPTIONS
 
-BEGIN PERIOD 1
-  OPEN/CLOSE trans-TDS_input/trans-TDS.oc_01.txt
-END PERIOD
+BEGIN PERIOD  1
+  SAVE  budget  all
+  SAVE  concentration  all
+  PRINT  budget  all
+  PRINT  concentration  all
+END PERIOD  1
+

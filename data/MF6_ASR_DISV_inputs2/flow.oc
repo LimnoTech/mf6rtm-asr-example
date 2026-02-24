@@ -1,11 +1,12 @@
 BEGIN OPTIONS
-  BUDGET FILEOUT flow.cbc
-  HEAD FILEOUT flow.hds
+  BUDGET  FILEOUT  flow_output/flow.cbc
+  HEAD  FILEOUT  flow_output/flow.hds
 END OPTIONS
 
-BEGIN PERIOD 1
-  PRINT BUDGET ALL 
-  PRINT HEAD ALL 
-  SAVE BUDGET ALL 
-  SAVE HEAD ALL 
-END PERIOD
+BEGIN PERIOD  1
+  SAVE  budget  all
+  SAVE  head  all
+  PRINT  budget  all
+  PRINT  head  all
+END PERIOD  1
+
