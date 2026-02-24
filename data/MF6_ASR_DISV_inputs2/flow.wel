@@ -1,0 +1,95 @@
+BEGIN OPTIONS
+  AUXILIARY TDS Temp CELLGRP
+  BOUNDNAMES
+  PRINT_INPUT
+  PRINT_FLOWS
+  SAVE_FLOWS
+END OPTIONS
+
+BEGIN DIMENSIONS
+  MAXBOUND 1
+END DIMENSIONS
+
+BEGIN PERIOD 1
+  OPEN/CLOSE flow_input/flow.wel_01.txt
+END PERIOD
+
+BEGIN PERIOD 2
+  OPEN/CLOSE flow_input/flow.wel_02.txt
+END PERIOD
+
+BEGIN PERIOD 3
+  OPEN/CLOSE flow_input/flow.wel_03.txt
+END PERIOD
+
+BEGIN PERIOD 4
+  OPEN/CLOSE flow_input/flow.wel_04.txt
+END PERIOD
+
+BEGIN PERIOD 5
+  OPEN/CLOSE flow_input/flow.wel_05.txt
+END PERIOD
+
+BEGIN PERIOD 6
+  OPEN/CLOSE flow_input/flow.wel_06.txt
+END PERIOD
+
+BEGIN PERIOD 7
+  OPEN/CLOSE flow_input/flow.wel_07.txt
+END PERIOD
+
+BEGIN PERIOD 8
+  OPEN/CLOSE flow_input/flow.wel_08.txt
+END PERIOD
+
+BEGIN PERIOD 9
+  OPEN/CLOSE flow_input/flow.wel_09.txt
+END PERIOD
+
+BEGIN PERIOD 10
+  OPEN/CLOSE flow_input/flow.wel_10.txt
+END PERIOD
+
+BEGIN PERIOD 11
+  OPEN/CLOSE flow_input/flow.wel_11.txt
+END PERIOD
+
+BEGIN PERIOD 12
+  OPEN/CLOSE flow_input/flow.wel_12.txt
+END PERIOD
+
+BEGIN PERIOD 13
+  OPEN/CLOSE flow_input/flow.wel_13.txt
+END PERIOD
+
+BEGIN PERIOD 14
+  OPEN/CLOSE flow_input/flow.wel_14.txt
+END PERIOD
+
+BEGIN PERIOD 15
+  OPEN/CLOSE flow_input/flow.wel_15.txt
+END PERIOD
+
+BEGIN PERIOD 16
+  OPEN/CLOSE flow_input/flow.wel_16.txt
+END PERIOD
+
+BEGIN PERIOD 17
+  OPEN/CLOSE flow_input/flow.wel_17.txt
+END PERIOD
+
+BEGIN PERIOD 18
+  OPEN/CLOSE flow_input/flow.wel_18.txt
+END PERIOD
+
+BEGIN PERIOD 19
+  OPEN/CLOSE flow_input/flow.wel_19.txt
+END PERIOD
+
+BEGIN PERIOD 20
+  OPEN/CLOSE flow_input/flow.wel_20.txt
+END PERIOD
+
+BEGIN PERIOD 21
+  OPEN/CLOSE flow_input/flow.wel_21.txt
+END PERIOD

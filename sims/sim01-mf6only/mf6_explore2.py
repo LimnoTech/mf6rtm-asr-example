@@ -146,8 +146,8 @@ else:
 
 # %%
 # Modflow inputs file folder
-mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs'
-# mf6_input_files = os.listdir(mf6_inputs_path)
+mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs2'
+                                    # sim 2 = 10ft resolution near well (vs 2ft for original)
 
 # %%
 # Copy input files to simulation workspace directory)
@@ -363,8 +363,11 @@ pd.DataFrame(cell_volumes).T.describe()
 cell_volumes[2,:].min()
 
 # %%
+np.where(cell_volumes == cell_volumes[2,:].min())
+
+# %%
 # volume of cells near well screen
-cell_volumes[2, 490:500]
+cell_volumes[2, 456:468]
 
 # %% [markdown]
 # ### Grid Cell Map

@@ -1,0 +1,95 @@
+BEGIN OPTIONS
+  AUXILIARY TDS Temp CELLGRP
+  BOUNDNAMES
+  PRINT_INPUT
+  PRINT_FLOWS
+  SAVE_FLOWS
+END OPTIONS
+
+BEGIN DIMENSIONS
+  MAXBOUND 500
+END DIMENSIONS
+
+BEGIN PERIOD 1
+  OPEN/CLOSE flow_input/flow.ghb_01.txt
+END PERIOD
+
+BEGIN PERIOD 2
+  OPEN/CLOSE flow_input/flow.ghb_02.txt
+END PERIOD
+
+BEGIN PERIOD 3
+  OPEN/CLOSE flow_input/flow.ghb_03.txt
+END PERIOD
+
+BEGIN PERIOD 4
+  OPEN/CLOSE flow_input/flow.ghb_04.txt
+END PERIOD
+
+BEGIN PERIOD 5
+  OPEN/CLOSE flow_input/flow.ghb_05.txt
+END PERIOD
+
+BEGIN PERIOD 6
+  OPEN/CLOSE flow_input/flow.ghb_06.txt
+END PERIOD
+
+BEGIN PERIOD 7
+  OPEN/CLOSE flow_input/flow.ghb_07.txt
+END PERIOD
+
+BEGIN PERIOD 8
+  OPEN/CLOSE flow_input/flow.ghb_08.txt
+END PERIOD
+
+BEGIN PERIOD 9
+  OPEN/CLOSE flow_input/flow.ghb_09.txt
+END PERIOD
+
+BEGIN PERIOD 10
+  OPEN/CLOSE flow_input/flow.ghb_10.txt
+END PERIOD
+
+BEGIN PERIOD 11
+  OPEN/CLOSE flow_input/flow.ghb_11.txt
+END PERIOD
+
+BEGIN PERIOD 12
+  OPEN/CLOSE flow_input/flow.ghb_12.txt
+END PERIOD
+
+BEGIN PERIOD 13
+  OPEN/CLOSE flow_input/flow.ghb_13.txt
+END PERIOD
+
+BEGIN PERIOD 14
+  OPEN/CLOSE flow_input/flow.ghb_14.txt
+END PERIOD
+
+BEGIN PERIOD 15
+  OPEN/CLOSE flow_input/flow.ghb_15.txt
+END PERIOD
+
+BEGIN PERIOD 16
+  OPEN/CLOSE flow_input/flow.ghb_16.txt
+END PERIOD
+
+BEGIN PERIOD 17
+  OPEN/CLOSE flow_input/flow.ghb_17.txt
+END PERIOD
+
+BEGIN PERIOD 18
+  OPEN/CLOSE flow_input/flow.ghb_18.txt
+END PERIOD
+
+BEGIN PERIOD 19
+  OPEN/CLOSE flow_input/flow.ghb_19.txt
+END PERIOD
+
+BEGIN PERIOD 20
+  OPEN/CLOSE flow_input/flow.ghb_20.txt
+END PERIOD
+
+BEGIN PERIOD 21
+  OPEN/CLOSE flow_input/flow.ghb_21.txt
+END PERIOD

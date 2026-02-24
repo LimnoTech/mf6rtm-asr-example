@@ -1,0 +1,8 @@
+BEGIN OPTIONS
+  BUDGET FILEOUT trans-temp.cbc
+  CONCENTRATION FILEOUT trans-temp.ucn
+END OPTIONS
+
+BEGIN PERIOD 1
+  OPEN/CLOSE trans-temp_input/trans-temp.oc_01.txt
+END PERIOD

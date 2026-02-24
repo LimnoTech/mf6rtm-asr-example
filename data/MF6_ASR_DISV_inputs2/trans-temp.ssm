@@ -1,0 +1,6 @@
+BEGIN OPTIONS
+END OPTIONS
+
+BEGIN SOURCES
+  OPEN/CLOSE trans-temp_input/trans-temp.ssm_SOURCES.txt
+END SOURCES

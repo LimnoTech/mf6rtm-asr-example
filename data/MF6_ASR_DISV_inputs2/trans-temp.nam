@@ -1,0 +1,16 @@
+BEGIN OPTIONS
+  LIST  trans-temp_output/model.lst
+  PRINT_INPUT
+  PRINT_FLOWS
+  SAVE_FLOWS
+END OPTIONS
+
+BEGIN PACKAGES
+  DISV6 trans-temp.disv 'DISV'
+  ADV6 trans-temp.adv 'ADV'
+  DSP6 trans-temp.dsp 'DSP'
+  IC6 trans-temp.ic 'IC'
+  MST6 trans-temp.mst 'MST'
+  OC6 trans-temp.oc 'OC'
+  SSM6 trans-temp.ssm 'SSM'
+END PACKAGES

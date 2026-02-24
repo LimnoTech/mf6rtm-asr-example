@@ -1,0 +1,16 @@
+BEGIN OPTIONS
+  LIST  trans-TDS_output/model.lst
+  PRINT_INPUT
+  PRINT_FLOWS
+  SAVE_FLOWS
+END OPTIONS
+
+BEGIN PACKAGES
+  DISV6 trans-TDS.disv 'DISV'
+  ADV6 trans-TDS.adv 'ADV'
+  DSP6 trans-TDS.dsp 'DSP'
+  IC6 trans-TDS.ic 'IC'
+  MST6 trans-TDS.mst 'MST'
+  OC6 trans-TDS.oc 'OC'
+  SSM6 trans-TDS.ssm 'SSM'
+END PACKAGES
