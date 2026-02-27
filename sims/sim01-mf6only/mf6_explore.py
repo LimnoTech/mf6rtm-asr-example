@@ -519,6 +519,9 @@ component_name_l
 utils.run_models(sim, silent=False)
 
 # %% [markdown]
+# # Analyze Modflow 6 Outputs
+
+# %% [markdown]
 # ## Plot MF6 Transport Results with no Reactions
 #
 # When just running MF6, before any coupling
@@ -537,6 +540,7 @@ wel_cellid = wel_spd[0]["cellid"][0]
 wel_cellid
 wel_lay = wel_cellid[0]
 wel_cellnum = wel_cellid[1]
+wel_cellnum
 
 # %%
 # read in results for plots
@@ -602,7 +606,6 @@ conc[c][0:time, layer, 0, cell_num]
 
 # %%
 # temp and tds gwt output
-
 temp_tds_l = ["temp", "tds"]
 temp_tds_output = utils.get_concentrations(sim, temp_tds_l)
 times_temptds = utils.get_times_c(sim, temp_tds_l)
@@ -610,6 +613,14 @@ for c in range(len(temp_tds_l)):
     fig = plt.figure(figsize=(18, 5))
     plt.plot(times_temptds[c], temp_tds_output[c][:, k, 0, cnum])
     plt.title(temp_tds_l[c] + " [" + str(k) + "," + str(cnum) + "]")
+
+# %%
+temp_tds_output[0].shape
+
+# %%
+temp_tds_output[1].max()
+
+# %%
 # tds and temp plan view figures
 s = 1  # temp_tds_l index
 t_l = [0, 5, 10, 30, 50, -1]  # list of timestep index (NOT actual time/days)
@@ -802,6 +813,13 @@ for t in range(Cr.shape[0]):
 print('Cr > 1:  ' + str(np.where(Cr>1.)))
 print('Cr > 0.5:  ' + str(np.where(Cr>0.5)))
 
+# %%
+Cr.shape
+
+# %%
+pd.DataFrame(Cr[:,2,:]).T.describe()
+
+# %%
 # plot Cr map view
 t_l = [0, 1, 2, 5, 8, -1]  # list of timestep index (NOT actual time/days)
 for t in t_l:
