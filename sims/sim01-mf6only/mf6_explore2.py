@@ -16,7 +16,7 @@
 # ---
 
 # %% [markdown]
-# # ASR Test Simulation: Explore and Run Modflow 6 Simulation with no Chemistry
+# # ASR Test Simulation: Explore and Run Modflow 6 Simulation 2 (10ft near well) with no Chemistry
 #
 # NOTE: This [Jupytext](https://jupytext.readthedocs.io/en/latest/index.html) paired notebook, with paired `.py` and `.ipynb` files. 
 # - If using VS Code, install the the [Jupytext Sync extension](https://jupytext.readthedocs.io/en/latest/vs-code.html) for maximum benefit.
@@ -31,12 +31,12 @@
 #
 #
 #
-# ## Simple ASR Test Case
+# ## Simple ASR Test Case 2, coarser grid near well
 #
 # Grid type: DISV  
 # Grid Size: ~4800 ft x 4700 ft  
-# Grid cells 1.2 ft – 155 ft  
-# Cells per layer = 1032  
+# Grid cells 10 ft – 155 ft  
+# Cells per layer = 957  
 # Total cells = 5160  
 #
 # Grid Layers:
@@ -123,7 +123,7 @@ simulation_name
 # %%
 # Path to simulation workspace, which is git-ignored and 
 # will get over-written with each run of this notebook
-sim_ws = working_dir / 'ws'
+sim_ws = working_dir / 'ws2'
 sim_ws.mkdir(parents=True, exist_ok=True)
 
 # %% [markdown]
@@ -146,8 +146,8 @@ else:
 
 # %%
 # Modflow inputs file folder
-mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs2'
-                                    # sim 2 = 10ft resolution near well (vs 2ft for original)
+# Grid 2 = 10ft resolution near well (vs 2ft for original)
+mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs2' # Grid 2                                  
 
 # %%
 # Copy input files to simulation workspace directory)
@@ -530,20 +530,13 @@ utils.run_models(sim, silent=False)
 # When just running MF6, before any coupling
 
 # %%
-# Get transport components
-for model_name in sim.model_names:
-    # Collect model info 
-    model = sim.get_model(model_name)
-    model_type = model.model_type
-
-# %%
 # lookup cell ID of wel package cell
 wel_spd = gwf.wel.stress_period_data.array
 wel_cellid = wel_spd[0]["cellid"][0]
-wel_cellid
+display(wel_cellid)
+
 wel_lay = wel_cellid[0]
 wel_cellnum = wel_cellid[1]
-wel_cellnum
 
 # %%
 # read in results for plots

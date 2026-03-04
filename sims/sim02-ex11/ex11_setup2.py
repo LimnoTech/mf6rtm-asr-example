@@ -16,7 +16,7 @@
 # ---
 
 # %% [markdown]
-# # ASR Simulation 2: Grid 1 (2ft near well) with Chemistry from Phreeqc Example 11 
+# # ASR Simulation 2: Grid 2 (10ft near well) with Chemistry from Phreeqc Example 11 
 #
 # This simulation adds **cation exhange reaction chemistry** -- from the PHREEQC-3 Manual's Example 11 (Parkhurst and Appelo 2013) -- to the 3D transport models of the simple ASR test case.
 #
@@ -96,7 +96,7 @@ simulation_name
 # %%
 # Path to simulation workspace, which is git-ignored and 
 # will get over-written with each run of this notebook
-sim_ws = working_dir / 'ws'
+sim_ws = working_dir / 'ws2'
 sim_ws.mkdir(parents=True, exist_ok=True)
 
 # %% [markdown]
@@ -119,8 +119,8 @@ else:
 
 # %%
 # Modflow inputs file folder
-# Grid 1 = 2ft resolution near well
-mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs' # Grid 1
+# Grid 2 = 10ft resolution near well (vs 2ft for original)
+mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs2' # Grid 2
 
 # %%
 # Copy input files to simulation workspace directory)

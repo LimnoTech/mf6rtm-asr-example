@@ -527,20 +527,13 @@ utils.run_models(sim, silent=False)
 # When just running MF6, before any coupling
 
 # %%
-# Get transport components
-for model_name in sim.model_names:
-    # Collect model info 
-    model = sim.get_model(model_name)
-    model_type = model.model_type
-
-# %%
 # lookup cell ID of wel package cell
 wel_spd = gwf.wel.stress_period_data.array
 wel_cellid = wel_spd[0]["cellid"][0]
-wel_cellid
+display(wel_cellid)
+
 wel_lay = wel_cellid[0]
 wel_cellnum = wel_cellid[1]
-wel_cellnum
 
 # %%
 # read in results for plots
