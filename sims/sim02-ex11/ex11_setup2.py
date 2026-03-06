@@ -321,6 +321,15 @@ for model_name in sim.model_names:
 nxyz = nlay * ncpl
 nxyz
 
+# %%
+# lookup cell ID of wel package cell
+wel_spd = gwf.wel.stress_period_data.array
+wel_cellid = wel_spd[0]["cellid"][0]
+display(wel_cellid)
+
+wel_lay = wel_cellid[0]
+wel_cellnum = wel_cellid[1]
+
 # %% [markdown]
 # ### Cell Spacing
 
@@ -378,7 +387,7 @@ for k in range(nlay):
 
 # %%
 # volume of cells near well screen
-cell_volumes[2, 490:500]
+cell_volumes[2, wel_cellnum-6:wel_cellnum+6]
 
 # %%
 # TODO: Get flat Cell Index to (cellid_layer, cellid_cell) mapping
@@ -868,15 +877,6 @@ utils.run_models(sim, silent=False)
 # When just running MF6, before any coupling.
 #
 # For addtional result plots of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`
-
-# %%
-# lookup cell ID of wel package cell
-wel_spd = gwf.wel.stress_period_data.array
-wel_cellid = wel_spd[0]["cellid"][0]
-display(wel_cellid)
-
-wel_lay = wel_cellid[0]
-wel_cellnum = wel_cellid[1]
 
 # %%
 # read in results for plots

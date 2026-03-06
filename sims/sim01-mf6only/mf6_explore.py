@@ -16,7 +16,7 @@
 # ---
 
 # %% [markdown]
-# # ASR Test Simulation: Explore and Run Modflow 6 Simulation with no Chemistry
+# # ASR Test Simulation: Explore and Run Modflow 6 Grid 1 (2ft near well) with no Chemistry
 #
 # NOTE: This [Jupytext](https://jupytext.readthedocs.io/en/latest/index.html) paired notebook, with paired `.py` and `.ipynb` files. 
 # - If using VS Code, install the the [Jupytext Sync extension](https://jupytext.readthedocs.io/en/latest/vs-code.html) for maximum benefit.
@@ -31,7 +31,7 @@
 #
 #
 #
-# ## Simple ASR Test Case
+# ## Simple ASR Test Grid 1, 2ft near well
 #
 # Grid type: DISV  
 # Grid Size: ~4800 ft x 4700 ft  
@@ -146,9 +146,8 @@ else:
 
 # %%
 # Modflow inputs file folder
-mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs'
-# mf6_input_files = os.listdir(mf6_inputs_path)
-
+# Grid 1 = 2ft resolution near well
+mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs' # Grid 1
 # %%
 # Copy input files to simulation workspace directory)
 shutil.copytree(mf6_inputs_path, sim_ws, dirs_exist_ok=True)
@@ -292,6 +291,15 @@ for model_name in sim.model_names:
 nxyz = nlay * ncpl
 nxyz
 
+# %%
+# lookup cell ID of wel package cell
+wel_spd = gwf.wel.stress_period_data.array
+wel_cellid = wel_spd[0]["cellid"][0]
+display(wel_cellid)
+
+wel_lay = wel_cellid[0]
+wel_cellnum = wel_cellid[1]
+
 # %% [markdown]
 # ### Cell Spacing
 
@@ -364,7 +372,7 @@ cell_volumes[2,:].min()
 
 # %%
 # volume of cells near well screen
-cell_volumes[2, 490:500]
+cell_volumes[2, wel_cellnum-6:wel_cellnum+6]
 
 # %% [markdown]
 # ### Grid Cell Map
@@ -525,15 +533,6 @@ utils.run_models(sim, silent=False)
 # ## Plot MF6 Transport Results with no Reactions
 #
 # When just running MF6, before any coupling
-
-# %%
-# lookup cell ID of wel package cell
-wel_spd = gwf.wel.stress_period_data.array
-wel_cellid = wel_spd[0]["cellid"][0]
-display(wel_cellid)
-
-wel_lay = wel_cellid[0]
-wel_cellnum = wel_cellid[1]
 
 # %%
 # read in results for plots

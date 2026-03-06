@@ -16,7 +16,7 @@
 # ---
 
 # %% [markdown]
-# # ASR Test Simulation: Explore and Run Modflow 6 Simulation 2 (10ft near well) with no Chemistry
+# # ASR Test Simulation: Explore and Run Modflow 6 Grid 2 (10ft near well) with no Chemistry
 #
 # NOTE: This [Jupytext](https://jupytext.readthedocs.io/en/latest/index.html) paired notebook, with paired `.py` and `.ipynb` files. 
 # - If using VS Code, install the the [Jupytext Sync extension](https://jupytext.readthedocs.io/en/latest/vs-code.html) for maximum benefit.
@@ -31,7 +31,7 @@
 #
 #
 #
-# ## Simple ASR Test Case 2, coarser grid near well
+# ## Simple ASR Test Grid 2, 10ft near well
 #
 # Grid type: DISV  
 # Grid Size: ~4800 ft x 4700 ft  
@@ -148,7 +148,6 @@ else:
 # Modflow inputs file folder
 # Grid 2 = 10ft resolution near well (vs 2ft for original)
 mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs2' # Grid 2                                  
-
 # %%
 # Copy input files to simulation workspace directory)
 shutil.copytree(mf6_inputs_path, sim_ws, dirs_exist_ok=True)
@@ -292,6 +291,15 @@ for model_name in sim.model_names:
 nxyz = nlay * ncpl
 nxyz
 
+# %%
+# lookup cell ID of wel package cell
+wel_spd = gwf.wel.stress_period_data.array
+wel_cellid = wel_spd[0]["cellid"][0]
+display(wel_cellid)
+
+wel_lay = wel_cellid[0]
+wel_cellnum = wel_cellid[1]
+
 # %% [markdown]
 # ### Cell Spacing
 
@@ -367,7 +375,7 @@ np.where(cell_volumes == cell_volumes[2,:].min())
 
 # %%
 # volume of cells near well screen
-cell_volumes[2, 456:468]
+cell_volumes[2, wel_cellnum-6:wel_cellnum+6]
 
 # %% [markdown]
 # ### Grid Cell Map
@@ -530,15 +538,6 @@ utils.run_models(sim, silent=False)
 # When just running MF6, before any coupling
 
 # %%
-# lookup cell ID of wel package cell
-wel_spd = gwf.wel.stress_period_data.array
-wel_cellid = wel_spd[0]["cellid"][0]
-display(wel_cellid)
-
-wel_lay = wel_cellid[0]
-wel_cellnum = wel_cellid[1]
-
-# %%
 # read in results for plots
 
 # head in well cell over time
@@ -602,7 +601,6 @@ conc[c][0:time, layer, 0, cell_num]
 
 # %%
 # temp and tds gwt output
-
 temp_tds_l = ["temp", "tds"]
 temp_tds_output = utils.get_concentrations(sim, temp_tds_l)
 times_temptds = utils.get_times_c(sim, temp_tds_l)
