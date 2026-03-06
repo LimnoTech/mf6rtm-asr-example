@@ -16,9 +16,9 @@
 # ---
 
 # %% [markdown]
-# # ASR Simulation 2: Grid 2 (10ft near well) with Chemistry from Phreeqc Example 11 
+# # ASR Simulation 3: Grid 2 (10ft near well) with Chemistry from Wallis 2011 
 #
-# This simulation adds **cation exhange reaction chemistry** -- from the PHREEQC-3 Manual's Example 11 (Parkhurst and Appelo 2013) -- to the 3D transport models of the simple ASR test case.
+# This simulation adds **arsenic redox chemistry** -- from Wallis et al 2011 -- to the 3D transport models of the simple ASR test case.
 #
 # For information and exploration of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`.
 #
@@ -90,6 +90,7 @@ repo_path = working_dir.parent.parent
 repo_path
 
 # %%
+# Simulation based on chemical inputs
 simulation_name = working_dir.name
 simulation_name
 
@@ -175,8 +176,9 @@ assert postfix_filepath.exists()
 
 # %%
 # Select PHREEQC database file
+phreeqc_database_file = "datab.dat"
 # phreeqc_database_file = "phreeqc.dat" # used in Ex6?
-phreeqc_database_file = 'pht3d_datab.dat' # used in Ex4
+# phreeqc_database_file = 'pht3d_datab.dat' # used in Ex4
 phreeqc_databases_path = repo_path / "data" / "chem_databases"
 phreeqc_database_filepath = phreeqc_databases_path / phreeqc_database_file
 assert phreeqc_database_filepath.exists(), "PHREEQC database file missing"
@@ -392,6 +394,19 @@ cell_volumes[2, wel_cellnum-6:wel_cellnum+6]
 # %%
 # TODO: Get flat Cell Index to (cellid_layer, cellid_cell) mapping
 # for exploring phreeqcrm outputs
+
+# %%
+cell_flat_index = np.array(range(nlay*ncpl))
+cell_flat_index
+
+# %%
+cellid_flatmap = np.reshape(cell_flat_index, (nlay,ncpl))
+cellid_flatmap
+
+# %%
+cellid_layer = wel_lay
+cellid_cell = wel_cellnum
+cellid_flatmap[cellid_layer, cellid_cell]
 
 # %% [markdown]
 # ## Read Time Info
@@ -612,6 +627,9 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # %% [markdown]
 # ### Initialize IC Chemistry over Model Grid 
 # This creates a PhreeqcRM instance based on components in Solution Blocks assigned initial conditions over the grid. It then runs a PHREEQC time zero equilibrium calculation for inital speciation.
+
+# %%
+# reaction_model.database
 
 # %%
 # Intializing the mup3d class calculates the equilibrated
@@ -837,7 +855,8 @@ change_nstp = True
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
     #tdis_spd = tdis_spd[0:5]
-    #tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
+    # tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
+    # tdis_spd["nstp"] = tdis_spd["nstp"] / 2 # increase to 2-day timesteps
     #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
     #for t in range(len(tdis_spd)):
     #    tdis_spd['nstp'][t] = 1
@@ -879,143 +898,17 @@ utils.run_models(sim, silent=False)
 # For addtional result plots of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`
 
 # %%
-# read in results for plots
-
-# head in well cell over time
-head = gwf.output.head().get_alldata()
-times_h = gwf.output.head().get_times()
-
-# concentration of each component in well cell overtime
-conc = utils.get_concentrations(sim, component_name_l)
-times_c = utils.get_times_c(sim, component_name_l)
-
-# get specific discharge
-bud_flow = gwf.output.budget()
-spdis = bud_flow.get_data(text="DATA-SPDIS")
-
-
-# %%
-# Conc is a nested array of these shapes
-display(conc.shape, conc[0].shape)
-
-# %% [markdown]
-# ### Conc Timeseries near Well 
-
-# %%
 # Create list of components to plot based on intersection with transported components
 components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
 components_to_plot
 
-# %%
-k = wel_lay  # layer index
-cnum = wel_cellnum  # cell number
-for c in range(len(component_name_l)):
-    if component_name_l[c] in components_to_plot:
-        fig = plt.figure(num=101, figsize=(10, 5))
-        plt.plot(times_c[c], conc[c][:, k, 0, cnum], label=component_name_l[c])
-        plt.title("[" + str(k) + "," + str(cnum) + "]")
-        plt.legend()
-
-# %%
-# Get Concentration Values
-c = -1
-time = 5
-layer = 2
-cell_num = wel_cellnum + 20
-print(component_name_l[c], cell_num)
-conc[c][0:time, layer, 0, cell_num]
-
-# %% [markdown]
-# ### Conc Cross Sections
-
-# %%
-# xsection
-# to plot a cross section with disv, you have to make a line to plot along
-
-line = np.array([(694298, 1025429), (6999092, 1025429)])
-# creates a plot showing where the line is on the grid to make the cross section plot
-fig = plt.figure(figsize=(24, 4))
-ax = fig.add_subplot(1, 1, 1, aspect="auto")
-ax.set_title("Vertex Model Grid (DISV) with cross sectional line")
-# ax.set_xlim(0,0.08)
-# ax.set_ylim(0,1.)
-# use PlotMapView to plot a DISV (vertex) model
-mapview = flopy.plot.PlotMapView(gwf, layer=1)  # ,extent=(0,0.08,0,1.))
-# mapview.plot_bc("WEL-1")
-# mapview.plot_bc("CHD-1")
-linecollection = mapview.plot_grid()
-# plot the line over the model grid
-lc = plt.plot(line.T[0], line.T[1], "r--", lw=0.8)
-plt.show()
-
-# %%
-# creates a cross section along the line specified above for each timestep in t_l
-s = 4  # solute index for Cl
-t_l = [1, 10, 25, 50, -1]  # list of timestep index (NOT actual time/days)
-normalize = True
-if normalize == True:
-    scale = 50
-else:
-    scale = 100
-for t in t_l:
-    qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(
-        spdis[t], gwf, head=head[t]
-    )
-    fig = plt.figure(figsize=(9, 2.5))
-    ax = fig.add_subplot(1, 1, 1)
-    if normalize == True:
-        ax.set_title(
-            "normalized specific discharge and conc of "
-            + component_name_l[s]
-            + " at timestep index t="
-            + str(t)
-        )
-    else:
-        ax.set_title(
-            "specific discharge and conc of "
-            + component_name_l[s]
-            + " at timestep index t="
-            + str(t)
-        )
-    xsect = flopy.plot.PlotCrossSection(model=gwf, line={"line": line})
-    patch_collection = xsect.plot_array(conc[s][t, :, :, :], vmin=0.0, vmax=1.0)
-    line_collection = xsect.plot_grid()
-    quiver = xsect.plot_vector(
-        qx,
-        qy,
-        qz,
-        head=head,
-        hstep=2,
-        normalize=normalize,
-        color="white",
-        scale=scale,  # changes arrow length
-        width=0.003,
-        headwidth=3,
-        headlength=3,
-        headaxislength=3,
-        zorder=10,
-    )
-    cb = plt.colorbar(patch_collection, shrink=0.75)
-    ## TODO: add a legend for the quiver to relate to spdis magnitude when noralized = False..?
-
-# %% [markdown]
-# ### Conc Map View
-
-# %%
-s = 3  # solute index for Ca
-t_l = [0, 1, 10, 50, -1]  # list of timestep index (NOT actual time/days)
-for t in t_l:
-    fig = plt.figure(figsize=(24, 4))
-    ax = fig.add_subplot(1, 1, 1, aspect="auto")
-    ax.set_title("conc of " + component_name_l[s] + " at timestep index t=" + str(t))
-    mapview = flopy.plot.PlotMapView(gwf, layer=2)  # ,extent=(0,0.08,0,1.))
-    patch_collection = mapview.plot_array(conc[s][t, :, :, :])  # ,vmin=0., vmax=0.2)
-    linecollection = mapview.plot_grid()
-    cb = plt.colorbar(patch_collection, shrink=0.75)
-
 # %% [markdown]
 # # Reactive Transport Simulation
 # Using MF6RTM
+
+# %%
+# Does this cell run?
+"Yes"
 
 # %%
 # Run the model using this wrapper function for `mf6rtm.solve(model.wd)`
@@ -1024,7 +917,8 @@ reaction_model.run()
 # %% [markdown]
 #
 # Run times:
-# - 10% faster than grid 1
+# - 1.1133 mins w/ `SetComponentH20(False)`
+# - 1.1625 mins w/ `SetComponentH20(True)`
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
@@ -1050,6 +944,30 @@ sout_df = pd.read_csv(
 sout_df.info()
 sout_df
 
+# %% [markdown]
+# ## Holoviz Plots
+
+# %%
+import hvplot.pandas
+
+# %%
+cell_to_plot = cellid_flatmap[cellid_layer, cellid_cell]
+cell_to_plot
+
+# %%
+plot_df = sout_df.loc[sout_df.cell == cell_to_plot]
+
+# %%
+# Create list of components to plot based on intersection with transported components
+components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
+components_to_plot
+
+# %%
+plot_df[components_to_plot].hvplot()
+
+# %% [markdown]
+# ## Lauren's plots
+
 # %%
 component_name_l
 
@@ -1060,7 +978,7 @@ list_offset
 # %%
 # plot mf6 transport only, mf6 conc with rxn, and phreeqc
 k = 2 #wel_lay  # layer index
-cnum = wel_cellnum  # cell number
+cnum = 496 #wel_cellnum  # cell number
 colors_c     = ['paleturquoise','plum','gold','darkseagreen','cornflowerblue'] 
 colors_c_rxn = ['teal','purple','darkgoldenrod','darkgreen','midnightblue']
 f = 101 # Figure Number

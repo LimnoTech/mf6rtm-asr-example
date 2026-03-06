@@ -16,7 +16,7 @@
 # ---
 
 # %% [markdown]
-# # ASR Simulation with Chemistry from Wallis 2011 
+# # ASR Simulation 3: Grid 1 (2ft near well) with Chemistry from Wallis 2011 
 #
 # This simulation adds **arsenic redox chemistry** -- from Wallis et al 2011 -- to the 3D transport models of the simple ASR test case.
 #
@@ -119,13 +119,12 @@ else:
 
 # %%
 # Modflow inputs file folder
-mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs'
-mf6_input_files = os.listdir(mf6_inputs_path)
+# Grid 1 = 2ft resolution near well
+mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs' # Grid 1
 
 # %%
 # Copy input files to simulation workspace directory)
-for file in mf6_input_files:
-    shutil.copy2(mf6_inputs_path / file, sim_ws)
+shutil.copytree(mf6_inputs_path, sim_ws, dirs_exist_ok=True)
 
 # %%
 # Add required empty output folders
@@ -323,6 +322,15 @@ for model_name in sim.model_names:
 nxyz = nlay * ncpl
 nxyz
 
+# %%
+# lookup cell ID of wel package cell
+wel_spd = gwf.wel.stress_period_data.array
+wel_cellid = wel_spd[0]["cellid"][0]
+display(wel_cellid)
+
+wel_lay = wel_cellid[0]
+wel_cellnum = wel_cellid[1]
+
 # %% [markdown]
 # ### Cell Spacing
 
@@ -380,11 +388,24 @@ for k in range(nlay):
 
 # %%
 # volume of cells near well screen
-cell_volumes[2, 490:500]
+cell_volumes[2, wel_cellnum-6:wel_cellnum+6]
 
 # %%
 # TODO: Get flat Cell Index to (cellid_layer, cellid_cell) mapping
 # for exploring phreeqcrm outputs
+
+# %%
+cell_flat_index = np.array(range(nlay*ncpl))
+cell_flat_index
+
+# %%
+cellid_flatmap = np.reshape(cell_flat_index, (nlay,ncpl))
+cellid_flatmap
+
+# %%
+cellid_layer = wel_lay
+cellid_cell = wel_cellnum
+cellid_flatmap[cellid_layer, cellid_cell]
 
 # %% [markdown]
 # ## Read Time Info
@@ -607,7 +628,7 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # This creates a PhreeqcRM instance based on components in Solution Blocks assigned initial conditions over the grid. It then runs a PHREEQC time zero equilibrium calculation for inital speciation.
 
 # %%
-reaction_model.database
+# reaction_model.database
 
 # %%
 # Intializing the mup3d class calculates the equilibrated
@@ -833,7 +854,8 @@ change_nstp = True
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
     #tdis_spd = tdis_spd[0:5]
-    #tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
+    # tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
+    # tdis_spd["nstp"] = tdis_spd["nstp"] / 2 # increase to 2-day timesteps
     #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
     #for t in range(len(tdis_spd)):
     #    tdis_spd['nstp'][t] = 1
@@ -865,7 +887,7 @@ sim.write_simulation()
 # To confirm that conservative transport is occuring as expected.
 
 # %%
-# utils.run_models(sim, silent=False)
+utils.run_models(sim, silent=False)
 
 # %% [markdown]
 # ## Plot MF6 Transport Results with no Reactions
@@ -920,6 +942,30 @@ sout_df = pd.read_csv(
 )
 sout_df.info()
 sout_df
+
+# %% [markdown]
+# ## Holoviz Plots
+
+# %%
+import hvplot.pandas
+
+# %%
+cell_to_plot = cellid_flatmap[cellid_layer, cellid_cell]
+cell_to_plot
+
+# %%
+plot_df = sout_df.loc[sout_df.cell == cell_to_plot]
+
+# %%
+# Create list of components to plot based on intersection with transported components
+components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
+components_to_plot
+
+# %%
+plot_df[components_to_plot].hvplot()
+
+# %% [markdown]
+# ## Lauren's plots
 
 # %%
 component_name_l
