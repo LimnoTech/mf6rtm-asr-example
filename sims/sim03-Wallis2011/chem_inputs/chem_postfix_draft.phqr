@@ -17,16 +17,26 @@ SOLUTION_SPECIES
   log_k -9.0
 
 SELECTED_OUTPUT
--reset        false  ! Resets all other identifiers
--time         true
--pH           true
--pe           true
--alkalinity   false
--totals       Ca Na Cl K Mg S(6)
-              O(0)
+-reset         false
+-distance      false
+-time          true
+-file          out.dat
+
 USER_PUNCH
-    -headings cell 
+    -headings time cell O0 Ca Cl Fe2 Fe3 K Mg \
+              N3 NO3 Na S_2 SO4 Si Amm N0 \
+              pH pe \
+              EQUI_Ferrihydrite \
+              MOL_CaX2 MOL_FeX2 MOL_KX MOL_MgX2 MOL_NaX \
+              KIN_Pyrite
     -start
+    10 PUNCH TOTAL_TIME/86400
     11 PUNCH cell_no
+    12 PUNCH TOT("Orgc")
+    20 PUNCH TOT("O(0)"), TOT("Ca"), TOT("Cl"), TOT("Fe(2)"), TOT("Fe(3)"), TOT("K"), TOT("Mg")
+    21 PUNCH TOT("N(3)"), TOT("N(5)"), TOT("Na"), TOT("S(-2)"), TOT("S(6)"), TOT("Si"), TOT("Amm"), TOT("N(0)")
+    30 PUNCH -LA("H+"), -LA("e-")
+    60 PUNCH EQUI("Ferrihydrite")
+    70 PUNCH MOL("CaX2"), MOL("FeX2"), MOL("KX"), MOL("MgX2"), MOL("NaX")
     -end
 END

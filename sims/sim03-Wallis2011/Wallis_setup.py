@@ -916,8 +916,8 @@ reaction_model.run()
 # %% [markdown]
 #
 # Run times:
-# - 1.1133 mins w/ `SetComponentH20(False)`
-# - 1.1625 mins w/ `SetComponentH20(True)`
+# - 1.4027 mins for Ca, Na, Cl, K, Mg, O(0), S(6). Same pH, pe
+# - 1.4488 mins for Ca, Na, Cl, K, Mg, O(0), S(6), pH, pe
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
@@ -948,6 +948,7 @@ sout_df
 
 # %%
 import hvplot.pandas
+import holoviews as hv
 
 # %%
 cell_to_plot = cellid_flatmap[cellid_layer, cellid_cell]
@@ -958,11 +959,20 @@ plot_df = sout_df.loc[sout_df.cell == cell_to_plot]
 
 # %%
 # Create list of components to plot based on intersection with transported components
-components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
+components_to_plot = [f'{c}(mol/kgw)' for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
 components_to_plot
 
 # %%
-plot_df[components_to_plot].hvplot()
+majors_plot = plot_df[components_to_plot].hvplot()
+majors_plot
+
+# %%
+phpe_plot = plot_df[['pH', 'pe']].hvplot()
+phpe_plot
+
+# %%
+layout = (majors_plot + phpe_plot).cols(1).opts(axiswise=True)
+layout
 
 # %% [markdown]
 # ## Lauren's plots

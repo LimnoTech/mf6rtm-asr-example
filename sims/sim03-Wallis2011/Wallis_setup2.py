@@ -916,9 +916,9 @@ reaction_model.run()
 
 # %% [markdown]
 #
-# Run times:
-# - 1.1133 mins w/ `SetComponentH20(False)`
-# - 1.1625 mins w/ `SetComponentH20(True)`
+# Run times Grid 2 (vs Grid 1):
+# - 1.349 mins (vs 1.4027, 0.0537 faster) for Ca, Na, Cl, K, Mg, O(0), S(6). Same pH, pe.
+# - -1.3266 mins (vs 1.4488, 0.1222 faster) for Ca, Na, Cl, K, Mg, O(0), S(6), pH, pe
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
@@ -963,7 +963,7 @@ components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N',
 components_to_plot
 
 # %%
-plot_df[components_to_plot].hvplot()
+plot_df[components_to_plot].hvplot(width=550)
 
 # %% [markdown]
 # ## Lauren's plots
