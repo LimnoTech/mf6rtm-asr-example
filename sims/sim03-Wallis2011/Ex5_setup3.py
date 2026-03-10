@@ -16,7 +16,7 @@
 # ---
 
 # %% [markdown]
-# # ASR Simulation 3: Grid 2 (10ft near well) with Chemistry from Wallis 2011 
+# # ASR Simulation 3: Grid 2 (10ft near well) with Chemistry from MF6RTM Example 5 (Appelo 1998) 
 #
 # This simulation adds **arsenic redox chemistry** -- from Wallis et al 2011 -- to the 3D transport models of the simple ASR test case.
 #
@@ -97,7 +97,7 @@ simulation_name
 # %%
 # Path to simulation workspace, which is git-ignored and 
 # will get over-written with each run of this notebook
-sim_ws = working_dir / 'ws2' # Grid 2
+sim_ws = working_dir / 'ws2x' # Grid 2
 sim_ws.mkdir(parents=True, exist_ok=True)
 
 # %% [markdown]
@@ -154,7 +154,10 @@ mf6_input_path = sim_ws
 # %%
 # Phreeqc input file folder
 chem_inputs_path = working_dir / "chem_inputs"
-chem_input_files = os.listdir(chem_inputs_path)
+
+chem_prefix = "ex5_"
+chem_input_files_match = chem_inputs_path.glob(f"{chem_prefix}*")
+chem_input_files = [file.name for file in chem_input_files_match]
 chem_input_files
 
 # %%
@@ -164,20 +167,20 @@ for file in chem_input_files:
 
 # %%
 # Path to PHREEQC Block Input CSV Files
-solutions_filepath = sim_ws / "chem_solutions.csv"
-exchanges_filepath = sim_ws / "chem_exchanges.csv"
+solutions_filepath = sim_ws / f"{chem_prefix}solutions.csv"
+exchanges_filepath = sim_ws / f"{chem_prefix}exchanges.csv"
 assert solutions_filepath.exists() and exchanges_filepath.exists()
 
 # %%
 # Path to file with PHREEQC Input "postfix" instructions
 # to be appended to the PHREEQC Input file (*.pqi) created by mf6rtm
-postfix_filepath = sim_ws /  'chem_postfix.phqr'
+postfix_filepath = sim_ws /  f"{chem_prefix}postfix.phqr"
 assert postfix_filepath.exists()
 
 # %%
 # Select PHREEQC database file
-phreeqc_database_file = "datab.dat"
-# phreeqc_database_file = "phreeqc.dat" # used in Ex6?
+# phreeqc_database_file = "datab.dat"
+phreeqc_database_file = "phreeqc.dat" # used in Ex5 & 6?
 # phreeqc_database_file = 'pht3d_datab.dat' # used in Ex4
 phreeqc_databases_path = repo_path / "data" / "chem_databases"
 phreeqc_database_filepath = phreeqc_databases_path / phreeqc_database_file
@@ -189,7 +192,6 @@ assert phreeqc_database_filepath.exists(), "PHREEQC database file missing"
 phreeqc_input_filepath = sim_ws / "phinp.dat"
 # PhreeqcRM YAML config file
 phreeqcrm_yaml_filepath = sim_ws / "mf6rtm.yaml"
-print("MF6RTM-created PHREEQCRM YAML file exists?", phreeqcrm_yaml_filepath.exists())
 
 # %% [markdown]
 # ## Set Path to MF6 Executable & Library
@@ -481,7 +483,7 @@ spd_wel_df
 # %%
 # Read Geochemical Inputs file
 # for aqueous phase ("solution") components
-solutions_df = pd.read_csv(solutions_filepath, index_col="component")
+solutions_df = pd.read_csv(solutions_filepath, index_col="component", comment = '#',)
 solutions_df
 # %%
 # convert dataframe to a Keyword Data Block dictionary
@@ -532,7 +534,7 @@ solutions.ic
 wellchem = mf6rtm.mup3d.ChemStress('wel')
 
 # Assign solution block number to stress period data (spd)
-# TODO: implement for multiple wells?
+# TODO: implement for multiple wells? See MF6RTM Example 5
 sol_spd = [2] 
 wellchem.set_spd(sol_spd)
 wellchem.sol_spd
@@ -595,8 +597,11 @@ reaction_model.set_wd(sim_ws)
 # set Phreeqc database
 reaction_model.set_database(phreeqc_database_filepath)
 
-# set exchange phases
+# set chemistry domain initilization to model object
 reaction_model.set_exchange_phases(exchanger)
+# reaction_model.set_phases(kinetics)
+# reaction_model.set_phases(equilibriums)
+# reaction_model.set_phases(surfaces)
 
 # set Phreeqc postfix file
 reaction_model.set_postfix(postfix_filepath)
@@ -629,14 +634,8 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # This creates a PhreeqcRM instance based on components in Solution Blocks assigned initial conditions over the grid. It then runs a PHREEQC time zero equilibrium calculation for inital speciation.
 
 # %%
-# reaction_model.database
-
-# %%
 # Intializing the mup3d class calculates the equilibrated
 # initial concentration array
-# NOTE: this is very slow over a large grid. 
-# TODO: refactor `solver._get_cdlbl_vect()` to use `np.reshape()`, which is 2x faster. See below.
-# Workaround is to just do this for ever solution.
 reaction_model.initialize()
 
 # %%
@@ -678,6 +677,10 @@ reaction_model.sconc
 
 # %% [markdown]
 # #### Aside to test approaches for reshaping
+#
+# To speed up calculations over a large grid. 
+#
+# TODO: refactor `solver._get_cdlbl_vect()` to use `np.reshape()`, which is 2x faster. See below.
 
 # %%
 # create alias for testing current implementation
@@ -773,7 +776,7 @@ component_name_l = reaction_model.sconc.keys()
 component_name_l
 
 # %%
-reaction_model.sconc['Na']
+reaction_model.sconc['Ca']
 
 # %%
 # create new gwt models for each component
@@ -798,7 +801,7 @@ sim.model_names
 # %%
 # Confirm initial condition concs for Na, from `mup3d.sconc`
 # units of moles per m^3 (or mmol/L), 
-sim.get_model('trans-Na').ic.strt.array
+sim.get_model('trans-Ca').ic.strt.array
 
 # %% [markdown]
 # ## Add Chem Components to Stress Period Data
@@ -967,8 +970,8 @@ component_name_l
 
 # %%
 # Create list of components to plot based on intersection with transported components
-components_to_plot = [f'{c}(mol/kgw)' for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na',]]
-components_to_plot.append('S(6)(mol/kgw)')
+components_to_plot = [f'{c}' for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na',]]
+components_to_plot.append('S(6)')
 components_to_plot
 
 # %%

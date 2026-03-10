@@ -216,4 +216,4 @@ __marimo__/
 /bin
 *outputs/
 *ws/
-*ws2/
+*ws2*/
