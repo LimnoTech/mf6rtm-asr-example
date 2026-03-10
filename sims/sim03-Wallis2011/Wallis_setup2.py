@@ -952,6 +952,7 @@ sout_df
 
 # %%
 import hvplot.pandas
+import holoviews as hv
 
 # %%
 cell_to_plot = cellid_flatmap[cellid_layer, cellid_cell]
@@ -959,21 +960,37 @@ cell_to_plot
 
 # %%
 plot_df = sout_df.loc[sout_df.cell == cell_to_plot]
+plot_df.columns
 
 # %%
 component_name_l
 
 # %%
 # Create list of components to plot based on intersection with transported components
-components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
+components_to_plot = [f'{c}(mol/kgw)' for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na',]]
+components_to_plot.append('S(6)(mol/kgw)')
 components_to_plot
 
 # %%
-vars_to_plot = [f"{c}(mol/kgw)" for c in components_to_plot]
-vars_to_plot
+majors_plot = plot_df[components_to_plot].hvplot(ylabel='Concentrations (mol/kgw)')
 
 # %%
-plot_df[vars_to_plot].hvplot(width=550)
+minors_to_plot = ['S(-2)(mol/kgw)']
+minors_plot = plot_df[minors_to_plot].hvplot(ylabel='Concentrations (mol/kgw)')
+
+# %%
+phpe_plot = plot_df[['pH', 'pe']].hvplot(ylabel='pH or pe')
+
+# %%
+cellid_cell
+
+# %%
+plot_list = [majors_plot, minors_plot, phpe_plot]
+hv.Layout(plot_list).cols(1).opts(
+    title=f'MF6RTM Results for "{simulation_name}" at cellid {wel_cellid}',
+    shared_axes=False, 
+    axiswise=True,
+)
 
 # %% [markdown]
 # ## Lauren's plots
@@ -988,7 +1005,7 @@ list_offset
 # %%
 # plot mf6 transport only, mf6 conc with rxn, and phreeqc
 k = 2 #wel_lay  # layer index
-cnum = 496 #wel_cellnum  # cell number
+cnum = wel_cellnum  # cell number
 colors_c     = ['paleturquoise','plum','gold','darkseagreen','cornflowerblue'] 
 colors_c_rxn = ['teal','purple','darkgoldenrod','darkgreen','midnightblue']
 f = 101 # Figure Number

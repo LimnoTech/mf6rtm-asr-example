@@ -974,18 +974,21 @@ components_to_plot
 
 # %%
 majors_plot = plot_df[components_to_plot].hvplot(ylabel='Concentrations (mol/kgw)')
-majors_plot
 
 # %%
-phpe_plot = plot_df[['pH', 'pe']].hvplot()
-phpe_plot
+minors_to_plot = ['S(-2)(mol/kgw)']
+minors_plot = plot_df[minors_to_plot].hvplot(ylabel='Concentrations (mol/kgw)')
 
 # %%
-(majors_plot + phpe_plot).cols(1).opts(shared_axes=False)
+phpe_plot = plot_df[['pH', 'pe']].hvplot(ylabel='pH or pe')
 
 # %%
-plot_list = [majors_plot, phpe_plot]
-hv.Layout(plot_list).cols(1).opts(shared_axes=False, axiswise=True)
+plot_list = [majors_plot, minors_plot, phpe_plot]
+hv.Layout(plot_list).cols(1).opts(
+    title=f'MF6RTM Results for "{simulation_name}" at cellid {wel_cellid}',
+    shared_axes=False, 
+    axiswise=True,
+)
 
 # %% [markdown]
 # ## Lauren's plots
