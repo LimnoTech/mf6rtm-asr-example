@@ -918,7 +918,10 @@ reaction_model.run()
 #
 # Run times Grid 2 (vs Grid 1):
 # - 1.349 mins (vs 1.4027, 0.0537 faster) for Ca, Na, Cl, K, Mg, O(0), S(6). Same pH, pe.
-# - -1.3266 mins (vs 1.4488, 0.1222 faster) for Ca, Na, Cl, K, Mg, O(0), S(6), pH, pe
+# - 1.3266 mins (vs 1.4488) for Ca, Na, Cl, K, Mg, O(0), S(6), pH, pe
+# - 1.091 mins (vs 1.1985 ) as above but reboot
+# - crashed at Stress Period 4 when adding Fe(2), Fe(3)
+# - crashed at Stress Period 21 when just adding S(-2)
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
@@ -958,12 +961,19 @@ cell_to_plot
 plot_df = sout_df.loc[sout_df.cell == cell_to_plot]
 
 # %%
+component_name_l
+
+# %%
 # Create list of components to plot based on intersection with transported components
 components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
 components_to_plot
 
 # %%
-plot_df[components_to_plot].hvplot(width=550)
+vars_to_plot = [f"{c}(mol/kgw)" for c in components_to_plot]
+vars_to_plot
+
+# %%
+plot_df[vars_to_plot].hvplot(width=550)
 
 # %% [markdown]
 # ## Lauren's plots

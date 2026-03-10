@@ -22,7 +22,7 @@ SELECTED_OUTPUT
 -pH           true
 -pe           true
 -alkalinity   false
--totals       Ca Na Cl K Mg S(6)
+-totals       Ca Na Cl K Mg S(6) S(-2)
               O(0)
 USER_PUNCH
     -headings cell 

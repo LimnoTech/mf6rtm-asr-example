@@ -918,6 +918,9 @@ reaction_model.run()
 # Run times:
 # - 1.4027 mins for Ca, Na, Cl, K, Mg, O(0), S(6). Same pH, pe
 # - 1.4488 mins for Ca, Na, Cl, K, Mg, O(0), S(6), pH, pe
+# - 1.1985 mins as above but reboot
+# - crashed at Stress Period 4 when adding Fe(2), Fe(3)
+# - crashed at Stress Period 20 when just adding S(-2)
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
@@ -958,12 +961,19 @@ cell_to_plot
 plot_df = sout_df.loc[sout_df.cell == cell_to_plot]
 
 # %%
+plot_df.columns
+
+# %%
+component_name_l
+
+# %%
 # Create list of components to plot based on intersection with transported components
-components_to_plot = [f'{c}(mol/kgw)' for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
+components_to_plot = [f'{c}(mol/kgw)' for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na',]]
+components_to_plot.append('S(6)(mol/kgw)')
 components_to_plot
 
 # %%
-majors_plot = plot_df[components_to_plot].hvplot()
+majors_plot = plot_df[components_to_plot].hvplot(ylabel='Concentrations (mol/kgw)')
 majors_plot
 
 # %%
@@ -971,8 +981,11 @@ phpe_plot = plot_df[['pH', 'pe']].hvplot()
 phpe_plot
 
 # %%
-layout = (majors_plot + phpe_plot).cols(1).opts(axiswise=True)
-layout
+(majors_plot + phpe_plot).cols(1).opts(shared_axes=False)
+
+# %%
+plot_list = [majors_plot, phpe_plot]
+hv.Layout(plot_list).cols(1).opts(shared_axes=False, axiswise=True)
 
 # %% [markdown]
 # ## Lauren's plots
