@@ -7,6 +7,8 @@ import numpy as np
 from numpy.lib import recfunctions as rfn
 import pandas as pd
 import flopy
+import matplotlib.pyplot as plt
+
 
 molecular_weight_dict = {
     "H": 1.0079,
@@ -219,3 +221,124 @@ def modify_wel_spd(
     record_final["boundname"] = boundname
 
     return record_final
+
+
+def calc_Cr(sim, gwf, porosity):
+    ''' Calculates the Courant number in the x, y and z directions at each
+        timestep and stores the max and sum of Cr_x, Cr_y, and Cr_z '''
+    
+    # sim   = MF6 simulation object
+    # gwf   = MF6 groundwater flow model object
+
+    ### get grid cell dimensions
+    grid_package = gwf.get_package(gwf.get_grid_type().name)
+    cell2D = grid_package.cell2d.get_data()
+    cell2D_df = pd.DataFrame.from_records(cell2D, index='icell2d')
+    vertices = grid_package.vertices.get_data()
+    vertices_df = pd.DataFrame.from_records(vertices, index='iv')
+    top = grid_package.top.array
+    botm = grid_package.botm.array
+
+    ### calculate surface area of each grid cell within a single layer
+    for cell in range(len(cell2D_df)):
+        ### get vertice coordinates to calculate dx and dy
+        temp_cell_info = cell2D_df.iloc[[cell]]
+        # read each vert_1 - 5
+        icverts = temp_cell_info.filter(like="icvert_").iloc[0].to_list()
+        # remove Nones
+        icverts_clean = [int(v) for v in icverts if v is not None]
+        # look up (x,y) and create x and y arrays
+        x_l = vertices_df.loc[icverts_clean,"xv"].to_numpy()
+        y_l = vertices_df.loc[icverts_clean,"yv"].to_numpy()
+        # calculate dx and dy 
+        dx_temp = (np.max(x_l)-np.min(x_l))
+        dy_temp = (np.max(y_l)-np.min(y_l))
+        #surface_area = (np.max(x_l)-np.min(x_l)) * (np.max(y_l) - np.min(y_l))
+        cell2D_df.loc[cell,'dx'] = dx_temp
+        cell2D_df.loc[cell,'dy'] = dy_temp
+
+    # convert dx and dy to numpy array
+    dx = cell2D_df['dx'].to_numpy()
+    dy = cell2D_df['dy'].to_numpy()
+
+    # calc layer dz for each layer
+    # initialize dz array
+    dz = np.zeros_like(botm)
+    # for layer 1:
+    dz[0] = top - botm[0]
+    # for layers 2:nlay
+    dz[1:] = botm[:-1] - botm[1:]
+
+    ### read in specific discharge (flow through a cross section)
+    bud_flow = gwf.output.budget()
+    spdis = bud_flow.get_data(text="DATA-SPDIS")
+    head = gwf.output.head().get_alldata()
+
+    qx_l = []
+    qy_l = []
+    qz_l = []
+
+    for t in range(len(head)):
+        qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(
+            spdis[0], gwf, head=head[0]
+        )
+        qx_l.append(qx)
+        qy_l.append(qy)
+        qz_l.append(qz)
+
+    """qx, qy, qz are ndarrays of size (nlay, nrow, ncol) for a structured grid or 
+    size (nlay, ncpl) for an unstructured grid. The sign of qy is such that the y 
+    axis is considered to increase in the north direction. The sign of qz is such 
+    that the z axis is considered to increase in the upward direction. Note: if a 
+    head array is provided, inactive and dry cells are set to NaN."""
+
+    ### calculate pore water velocity (q/n) (flow through the pores)
+    v_pw_x = np.array(qx_l)/porosity
+    v_pw_y = np.array(qy_l)/porosity
+    v_pw_z = np.array(qz_l)/porosity
+
+    ### calculate Cr number (v_pore_water * dt / cell_dimention)
+    Cr_sum = np.full_like(v_pw_x, np.nan)
+    Cr_max = np.full_like(v_pw_x, np.nan)
+    # read in tdis for perlen and nstp
+    tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
+    dt_all = tdis_spd['perlen']/tdis_spd['nstp']
+
+    t = 0
+    for step in tdis_spd['nstp']:
+        dt = dt_all[step]
+        for s in range(step):
+            Cr_x_temp = abs(v_pw_x[t]) * dt / dx
+            Cr_y_temp = abs(v_pw_y[t]) * dt / dy
+            Cr_z_temp = abs(v_pw_z[t]) * dt / dz
+            Cr_sum[t] = np.round((Cr_x_temp + Cr_y_temp + Cr_z_temp),decimals=6)  
+            Cr_max[t] = np.round(np.maximum(np.maximum(Cr_x_temp,Cr_y_temp),Cr_z_temp),decimals=6)
+            t = t + 1
+
+    print('Cr_sum > 1:  ' + str(np.where(Cr_sum>1.)))
+    print('Cr_sum > 0.5:  ' + str(np.where(Cr_sum>0.5)))
+
+    return Cr_sum, Cr_max
+
+
+def plot_Cr_map_view(gwf,t_l,layer,Cr_type,Cr_data,f=101,extent=None):
+    # plot Courant number in map view using FloPy PlotMapView
+    # gwf     = flopy gwf model object
+    # t_l     = list of timestep index (NOT actual time/days)
+    # layer   = model layer to plot map view
+    # Cr_type = string of what Cr values used (Cr_sum, Cr_max...)
+    # Cr_data = np.array of calculated Cr number in shape [np.sum(tdis_spd['nstp']), nlay, ncpl]
+    # f       = starting figure number
+    # extent  = PlotMapView extent option: (xmin, xmax, ymin, ymax) 
+
+    for t in t_l:
+        fig = plt.figure(num=f,figsize=(6, 4))
+        ax = fig.add_subplot(1, 1, 1, aspect="auto")
+        ax.set_title(f"{Cr_type} at timestep index t=" + str(t))
+        mapview = flopy.plot.PlotMapView(gwf, layer=layer, extent=extent)
+        patch_collection = mapview.plot_array(Cr_data[t,:,:],vmin=0., vmax=0.02)
+        linecollection = mapview.plot_grid()
+        cb = plt.colorbar(patch_collection, shrink=0.75)
+        plt.show()
+        f = f + 1
+    return 
