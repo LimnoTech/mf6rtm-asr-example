@@ -616,10 +616,8 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # %%
 # Intializing the mup3d class calculates the equilibrated
 # initial concentration array
-# NOTE: this is very slow over a large grid. 
-# TODO: refactor `solver._get_cdlbl_vect()` to use `np.reshape()`, which is 2x faster. See below.
-# Workaround is to just do this for ever solution.
-reaction_model.initialize()
+
+reaction_model.initialize(add_charge_flag=True)
 
 # %%
 reaction_model.components

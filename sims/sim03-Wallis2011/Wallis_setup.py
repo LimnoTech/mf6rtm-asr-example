@@ -628,15 +628,11 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # This creates a PhreeqcRM instance based on components in Solution Blocks assigned initial conditions over the grid. It then runs a PHREEQC time zero equilibrium calculation for inital speciation.
 
 # %%
-# reaction_model.database
-
-# %%
 # Intializing the mup3d class calculates the equilibrated
 # initial concentration array
-# NOTE: this is very slow over a large grid. 
-# TODO: refactor `solver._get_cdlbl_vect()` to use `np.reshape()`, which is 2x faster. See below.
-# Workaround is to just do this for ever solution.
-reaction_model.initialize()
+# NOTE: It appears that nthreads cannot be increased above 1 if using the Python phreeqcrm package
+# See https://github.com/p-ortega/mf6rtm/issues/54
+reaction_model.initialize(nthreads=1, add_charge_flag=False)
 
 # %%
 reaction_model.components
@@ -674,29 +670,6 @@ ic_df
 # Dictionary of concentrations in units of moles per m^3 (or mmol/L), 
 # and structured to match the shape of Modflow's grid
 reaction_model.sconc
-
-# %% [markdown]
-# #### Aside to test approaches for reshaping
-
-# %%
-# create alias for testing current implementation
-# `c_dbl_vect` is the concentration double vector in units of mol/L
-c_dbl_vect = reaction_model.init_conc_array_phreeqc
-
-# %%
-# # %%timeit
-# # Current implementation, using code from `solver._get_cdlbl_vect()`
-# [c_dbl_vect[i : i + nxyz] for i in range(0, len(c_dbl_vect), nxyz)]
-# # 770 ns ± 10.3 ns
-
-# %%
-# # %%timeit
-# # Alternate implementation
-# np.reshape(reaction_model.init_conc_array_phreeqc, (len(reaction_model.components), -1))
-# # 435 ns ± 7.06 ns
-
-# %% [markdown]
-# 1.77x faster!
 
 # %% [markdown]
 # ### Initialize BC Chemistry for all Inflows
@@ -989,132 +962,6 @@ hv.Layout(plot_list).cols(1).opts(
     shared_axes=False, 
     axiswise=True,
 )
-
-# %% [markdown]
-# ## Lauren's plots
-
-# %%
-component_name_l
-
-# %%
-list_offset = len(component_name_l) - len(components_to_plot)
-list_offset
-
-# %%
-# plot mf6 transport only, mf6 conc with rxn, and phreeqc
-k = 2 #wel_lay  # layer index
-cnum = 496 #wel_cellnum  # cell number
-colors_c     = ['paleturquoise','plum','gold','darkseagreen','cornflowerblue'] 
-colors_c_rxn = ['teal','purple','darkgoldenrod','darkgreen','midnightblue']
-f = 101 # Figure Number
-for c in range(len(component_name_l)):
-    if component_name_l[c] in components_to_plot:
-        # print(component_name_l[c])
-        fig = plt.figure(num=f, figsize=(9, 5))
-        plt.plot(times_c[c], conc[c][:, k, 0, cnum], color=colors_c[c-list_offset],label=component_name_l[c],marker='.',markersize=12)
-        plt.plot(times_c_rxn[c], conc_rxn[c][:, k, 0, cnum], color=colors_c_rxn[c-list_offset], label=component_name_l[c]+'_rxn',marker='.')
-        plt.title("Grid Cell ID: [" + str(k) + "," + str(cnum) + "]")
-        leg = plt.legend(loc='center right', bbox_to_anchor=(1.17, 0.5))
-plt.xlabel('Time (d)')
-plt.ylabel('Concentration (mmol/kg)')
-plt.tight_layout()
-plt.show()
-
-# %%
-component_name_l
-
-# %%
-
-################################################################################
-### Plot cross section (xsect) of concentration of MF6RTM with rxn results
-################################################################################
-
-# OPTIONS # 
-plot_bcs = False # if True, plots boundary conditions for wel and chd package
-normalize = True # if True, specific discharge is normalized and only shows direction
-plot_spdis = False # if True, plots specific discharge on cross section
-# component_name_l = ['H', 'O', 'Charge', 'Ca', 'Cl', 'K', 'N', 'Na']
-s = component_name_l.index("Ca")  # solute index for Ca
-t_l = [0, 1,10,20, 30, 40, 50, 60, 80, -1]  # list of timestep index (NOT actual time/days)
-# OPTIONS #
-
-# to plot a cross section with disv, you have to make a line to plot along
-line = np.array([(694298, 1025435), (6999092, 1025435)]) # goes through wel cellID 496
-# creates a plot showing where the line is on the grid to make the cross section plot
-fig = plt.figure(num=f,figsize=(6, 4))
-ax = fig.add_subplot(1, 1, 1, aspect="auto")
-ax.set_title("Vertex Model Grid (DISV) with cross sectional line")
-# use PlotMapView to plot a DISV (vertex) model
-mapview = flopy.plot.PlotMapView(gwf, layer=1)  # ,extent=(0,0.08,0,1.))
-if plot_bcs == True:
-    mapview.plot_bc("WEL-1")
-    mapview.plot_bc("CHD-1")
-linecollection = mapview.plot_grid()
-# plot the line over the model grid
-lc = plt.plot(line.T[0], line.T[1], "r--", lw=0.8)
-plt.show()
-f = f + 1
-
-# creates a cross section along the line specified above for each timestep in t_l
-# reads concentration data from modflow6 output files for MF6RTM simulation
-sim = flopy.mf6.MFSimulation.load(
-    sim_ws=sim_ws,
-    exe_name=mf6_exe,
-    verbosity_level=0,
-)
-conc = utils.get_concentrations(sim, component_name_l)
-times_c = utils.get_times_c(sim, component_name_l)
-
-if normalize == True:
-    scale = 50
-else:
-    scale = 100
-for t in t_l:
-    qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(
-        spdis[t], gwf, head=head[t]
-    )
-    fig = plt.figure(num = f,figsize=(6, 5))
-    ax = fig.add_subplot(1, 1, 1)
-    if normalize == True:
-        ax.set_title(
-            "normalized specific discharge and conc of "
-            + component_name_l[s]
-            + " at timestep index t="
-            + str(t)
-        )
-    else:
-        ax.set_title(
-            "specific discharge and conc of "
-            + component_name_l[s]
-            + " at timestep index t="
-            + str(t)
-        )
-    xsect = flopy.plot.PlotCrossSection(model=gwf, line={"line": line})
-    patch_collection = xsect.plot_array(conc[s][t, :, :, :], vmin=0.0, vmax=1.2)
-    line_collection = xsect.plot_grid(linewidth=0.5)
-    if plot_spdis == True:
-        quiver = xsect.plot_vector(
-            qx,
-            qy,
-            qz,
-            head=head,
-            hstep=2,
-            normalize=normalize,
-            color="white",
-            scale=scale,  # changes arrow length
-            width=0.003,
-            headwidth=3,
-            headlength=3,
-            headaxislength=3,
-            zorder=10,
-        )
-    cb = plt.colorbar(patch_collection, shrink=0.75)
-    ## TODO: add a legend for the quiver to relate to spdis magnitude when noralized = False..?
-    plt.xlabel('distance (m)')
-    plt.ylabel('elevation (m)')
-    plt.tight_layout()
-    plt.show()
-    f = f + 1
 
 # %% [markdown]
 # # END
