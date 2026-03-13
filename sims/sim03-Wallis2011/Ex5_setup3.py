@@ -637,7 +637,7 @@ surfaces.set_ic(1)
 surfaces.data
 
 # %% [markdown]
-# ### Create a reaction model (RM) instance using the `mf6rtm` `Mup3d` class
+# ### Create reaction model (RM) instance with `mf6rtm` `Mup3d` class
 
 # %%
 # create model class, with solution initial conditions
@@ -649,11 +649,13 @@ reaction_model.set_wd(sim_ws)
 # set Phreeqc database
 reaction_model.set_database(phreeqc_database_filepath)
 
+reaction_model.set_initial_temp([7., 7., 7.])
+
 # set chemistry domain initilization to model object
 reaction_model.set_exchange_phases(exchanger)
-reaction_model.set_phases(kinetic_phases)
 reaction_model.set_phases(equilibrium_phases)
 reaction_model.set_phases(surfaces)
+# reaction_model.set_phases(kinetic_phases)
 
 # set Phreeqc postfix file
 reaction_model.set_postfix(postfix_filepath)
@@ -725,7 +727,7 @@ ic_df
 # %%
 # Dictionary of concentrations in units of moles per m^3 (or mmol/L), 
 # and structured to match the shape of Modflow's grid
-reaction_model.sconc
+# reaction_model.sconc
 
 # %% [markdown]
 # ### Initialize BC Chemistry for all Inflows
@@ -943,13 +945,13 @@ components_to_plot
 reaction_model.run()
 
 # %% [markdown]
-#
-# Run times Grid 2 (vs Grid 1):
-# - 1.349 mins (vs 1.4027, 0.0537 faster) for Ca, Na, Cl, K, Mg, O(0), S(6). Same pH, pe.
-# - 1.3266 mins (vs 1.4488) for Ca, Na, Cl, K, Mg, O(0), S(6), pH, pe
-# - 1.091 mins (vs 1.1985 ) as above but reboot
-# - crashed at Stress Period 4 when adding Fe(2), Fe(3)
-# - crashed at Stress Period 21 when just adding S(-2)
+# Using MF6RTM Chemistry
+# - Runs with SOLUTIONS, EXCHANGES
+# - Crashes with SOLUTIONS, EXCHANGES, EQUILIBRIUM PHASES, SURFACE, KINETICS
+#   - C(4) concs negative after 2nd timestep
+#   - Tried modifying chemistry inputs, to get more reasonable pH, ALK, DIC, and charge balance but still crashed
+# - 1.5125 mins with all but KINETICS
+# - 1.5885 mins all, including KINETICS, but removing calcite
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
@@ -991,20 +993,20 @@ plot_df = sout_df.loc[sout_df.cell == cell_to_plot]
 plot_df.columns
 
 # %%
-component_name_l
-
-# %%
 # Create list of components to plot based on intersection with transported components
 components_to_plot = [f'{c}' for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na',]]
 components_to_plot.append('S(6)')
 components_to_plot
 
 # %%
-majors_plot = plot_df[components_to_plot].hvplot(ylabel='Concentrations (mol/kgw)')
+major_elements = ['Alk(eq/kgw)', 'Ca(mol/kgw)', 'Mg(mol/kgw)', 'Cl(mol/kgw)',
+       'S(6)(mol/kgw)', 'C(4)(mol/kgw)',]
+majors_plot = plot_df[major_elements].hvplot(ylabel='Concentrations (mol/kgw)')
 
 # %%
-minors_to_plot = []
-minors_plot = plot_df[minors_to_plot].hvplot(ylabel='Concentrations (mol/kgw)')
+minor_elements = ['S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)',
+       'Fe(3)(mol/kgw)',]
+minors_plot = plot_df[minor_elements].hvplot(ylabel='Concentrations (mol/kgw)')
 
 # %%
 phpe_plot = plot_df[['pH', 'pe']].hvplot(ylabel='pH or pe')
