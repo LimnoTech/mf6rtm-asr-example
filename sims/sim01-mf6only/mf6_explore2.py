@@ -725,12 +725,14 @@ for t in t_l:
 # ### Calculate Cr
 
 # %%
-### inputs for functions to calculate Cr
-porosity = 0.3
+gwt_model_names
+
+# %%
+gwt = sim.get_model('trans-tds')
 
 # %%
 ### calculate and plot Cr
-Cr_sum, Cr_max = utils.calc_Cr(sim, gwf, porosity)
+Cr_sum, Cr_max = utils.calc_Cr(sim, gwf, gwt, 2)
 # Displays locations with exceedances
 
 # %%
@@ -751,9 +753,13 @@ layer = 2
 Cr_type = 'Cr_sum'
 f = f + 1
 
+# variable range for coloramps
+vmin = 0.0
+vmax = 0.02
+
 # %%
 # plot Courant number in map view using FloPy PlotMapView
-utils.plot_Cr_map_view(gwf,t_l,layer,Cr_type,Cr_sum,f,extent)
+utils.plot_Cr_map_view(gwf, t_l, layer, Cr_type, Cr_sum, vmin, vmax, f, extent)
 
 # %% [markdown]
 # # END
