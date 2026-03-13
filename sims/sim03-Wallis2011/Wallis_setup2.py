@@ -826,11 +826,44 @@ spd_welchem_df = spd_welchem_df.droplevel(level=1)
 spd_welchem_df
 
 # %%
+# Modify number of stress periods to check output before kernel crash.
+
+# For modifying the total number of stress periods tdis and the stress period
+# data for any boundary condition packages must be updated. Below resets the 
+# number of stress periods (nper) to the first 5 stress periods.  
+reduce_nper = True 
+new_nper = 19
+if reduce_nper == True:
+# Modify tdis nper
+    tdis = sim.get_package("tdis")
+    tdis_spd = tdis.perioddata.get_data(full_data=True)
+    old_nper = tdis.nper.get_data()
+    # only keep first new_nper stress periods
+    tdis.nper = new_nper
+    tdis_spd = tdis_spd[0:new_nper]
+    tdis.perioddata.set_data(tdis_spd)
+
+    # Modify wel spd for new nper
+    wel = gwf.get_package('wel')
+    for sp in range(tdis.nper.get_data(),old_nper): wel.stress_period_data.remove_transient_key(sp)
+
+    # Modify chd spd for new nper
+    chd = gwf.get_package('chd')
+    for sp in range(tdis.nper.get_data(),old_nper): chd.stress_period_data.remove_transient_key(sp)
+
+    # Modify ghb spd for new nper
+    ghb = gwf.get_package('ghb')
+    for sp in range(tdis.nper.get_data(),old_nper): ghb.stress_period_data.remove_transient_key(sp)
+############################################################################
+
+
+# %%
 # modify tdis
-change_nstp = True
+change_nstp = False
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
     #tdis_spd = tdis_spd[0:5]
+    tdis_spd = tdis_spd[0:5]
     # tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
     # tdis_spd["nstp"] = tdis_spd["nstp"] / 2 # increase to 2-day timesteps
     #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
@@ -841,6 +874,7 @@ if change_nstp == True:
     # tdis_spd['perlen'][0] = 20
     tdis_spd['perlen'][-1] = 600.
     tdis_spd['nstp'][-1] = 60
+    ##tdis_spd['nstp'][-1] = 60
     sim.get_package("tdis").perioddata.set_data(tdis_spd)
 
 # %%
