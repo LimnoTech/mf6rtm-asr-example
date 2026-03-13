@@ -951,7 +951,7 @@ reaction_model.run()
 #   - C(4) concs negative after 2nd timestep
 #   - Tried modifying chemistry inputs, to get more reasonable pH, ALK, DIC, and charge balance but still crashed
 # - 1.5125 mins with all but KINETICS
-# - 1.5885 mins all, including KINETICS, but removing calcite
+# - 1.5717 mins all, including KINETICS, but removing calcite
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
@@ -999,14 +999,14 @@ components_to_plot.append('S(6)')
 components_to_plot
 
 # %%
-major_elements = ['Alk(eq/kgw)', 'Ca(mol/kgw)', 'Mg(mol/kgw)', 'Cl(mol/kgw)',
+major_elements = ['Ca(mol/kgw)', 'Mg(mol/kgw)', 'Cl(mol/kgw)',
        'S(6)(mol/kgw)', 'C(4)(mol/kgw)',]
-majors_plot = plot_df[major_elements].hvplot(ylabel='Concentrations (mol/kgw)')
+majors_plot = plot_df[major_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=False)
 
 # %%
 minor_elements = ['S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)',
        'Fe(3)(mol/kgw)',]
-minors_plot = plot_df[minor_elements].hvplot(ylabel='Concentrations (mol/kgw)')
+minors_plot = plot_df[minor_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=True)
 
 # %%
 phpe_plot = plot_df[['pH', 'pe']].hvplot(ylabel='pH or pe')
