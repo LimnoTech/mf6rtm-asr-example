@@ -223,7 +223,7 @@ def modify_wel_spd(
     return record_final
 
 
-def calc_Cr(sim, gwf, porosity):
+def calc_Cr(sim, gwf, gwt, layer):
     ''' Calculates the Courant number in the x, y and z directions at each
         timestep and stores the max and sum of Cr_x, Cr_y, and Cr_z '''
     
@@ -231,7 +231,8 @@ def calc_Cr(sim, gwf, porosity):
     # gwf   = MF6 groundwater flow model object
 
     ### get grid cell dimensions
-    grid_package = gwf.get_package(gwf.get_grid_type().name)
+    grid_type = gwf.get_grid_type()
+    grid_package = gwf.get_package(grid_type.name)
     cell2D = grid_package.cell2d.get_data()
     cell2D_df = pd.DataFrame.from_records(cell2D, index='icell2d')
     vertices = grid_package.vertices.get_data()
@@ -270,8 +271,8 @@ def calc_Cr(sim, gwf, porosity):
     dz[1:] = botm[:-1] - botm[1:]
 
     ### read in specific discharge (flow through a cross section)
-    bud_flow = gwf.output.budget()
-    spdis = bud_flow.get_data(text="DATA-SPDIS")
+    bud_gwf = gwf.output.budget()
+    spdis = bud_gwf.get_data(text="DATA-SPDIS")
     head = gwf.output.head().get_alldata()
 
     qx_l = []
@@ -293,9 +294,12 @@ def calc_Cr(sim, gwf, porosity):
     head array is provided, inactive and dry cells are set to NaN."""
 
     ### calculate pore water velocity (q/n) (flow through the pores)
-    v_pw_x = np.array(qx_l)/porosity
-    v_pw_y = np.array(qy_l)/porosity
-    v_pw_z = np.array(qz_l)/porosity
+    mst = gwt.get_package('mst')
+    porosity = mst.porosity.get_data()
+
+    v_pw_x = np.array(qx_l)/porosity[layer][0]
+    v_pw_y = np.array(qy_l)/porosity[layer][0]
+    v_pw_z = np.array(qz_l)/porosity[layer][0]
 
     ### calculate Cr number (v_pore_water * dt / cell_dimention)
     Cr_sum = np.full_like(v_pw_x, np.nan)
@@ -321,7 +325,7 @@ def calc_Cr(sim, gwf, porosity):
     return Cr_sum, Cr_max
 
 
-def plot_Cr_map_view(gwf,t_l,layer,Cr_type,Cr_data,f=101,extent=None):
+def plot_Cr_map_view(gwf,t_l,layer,Cr_type,Cr_data,vmin,vmax,f=101,extent=None):
     # plot Courant number in map view using FloPy PlotMapView
     # gwf     = flopy gwf model object
     # t_l     = list of timestep index (NOT actual time/days)
@@ -336,7 +340,7 @@ def plot_Cr_map_view(gwf,t_l,layer,Cr_type,Cr_data,f=101,extent=None):
         ax = fig.add_subplot(1, 1, 1, aspect="auto")
         ax.set_title(f"{Cr_type} at timestep index t=" + str(t))
         mapview = flopy.plot.PlotMapView(gwf, layer=layer, extent=extent)
-        patch_collection = mapview.plot_array(Cr_data[t,:,:],vmin=0., vmax=0.02)
+        patch_collection = mapview.plot_array(Cr_data[t,:,:],vmin=vmin, vmax=vmax)
         linecollection = mapview.plot_grid()
         cb = plt.colorbar(patch_collection, shrink=0.75)
         plt.show()
