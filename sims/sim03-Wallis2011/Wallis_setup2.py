@@ -154,7 +154,10 @@ mf6_input_path = sim_ws
 # %%
 # Phreeqc input file folder
 chem_inputs_path = working_dir / "chem_inputs"
-chem_input_files = os.listdir(chem_inputs_path)
+
+chem_prefix = "chem_"
+chem_input_files_match = chem_inputs_path.glob(f"{chem_prefix}*")
+chem_input_files = [file.name for file in chem_input_files_match]
 chem_input_files
 
 # %%
@@ -164,14 +167,21 @@ for file in chem_input_files:
 
 # %%
 # Path to PHREEQC Block Input CSV Files
-solutions_filepath = sim_ws / "chem_solutions.csv"
-exchanges_filepath = sim_ws / "chem_exchanges.csv"
+solutions_filepath = sim_ws / f"{chem_prefix}solutions.csv"
+exchanges_filepath = sim_ws / f"{chem_prefix}exchanges.csv"
+equilibrium_phases_filepath = sim_ws / f"{chem_prefix}equilibrium_phases.csv"
+# surfaces_filepath = sim_ws / f"{chem_prefix}surfaces.csv"
+# kinetic_phases_filepath = sim_ws / f"{chem_prefix}kinetic_phases.csv"
+
 assert solutions_filepath.exists() and exchanges_filepath.exists()
+assert equilibrium_phases_filepath.exists()
+# assert surfaces_filepath.exists()
+# assert kinetic_phases_filepath.exists()
 
 # %%
 # Path to file with PHREEQC Input "postfix" instructions
 # to be appended to the PHREEQC Input file (*.pqi) created by mf6rtm
-postfix_filepath = sim_ws /  'chem_postfix.phqr'
+postfix_filepath = sim_ws /  f"{chem_prefix}postfix.phqr"
 assert postfix_filepath.exists()
 
 # %%
@@ -209,8 +219,8 @@ user = "Anthony"
 os = "macarm"
 
 # version = "6.4.2"
-version = "6.5.0"
-# version = "6.7.0.dev3"
+# version = "6.5.0"
+version = "6.7.0"
 
 try:
     mf6_exe = Path(flopy.which("mf6"))
@@ -481,7 +491,7 @@ spd_wel_df
 # %%
 # Read Geochemical Inputs file
 # for aqueous phase ("solution") components
-solutions_df = pd.read_csv(solutions_filepath, index_col="component")
+solutions_df = pd.read_csv(solutions_filepath, index_col="component", comment = '#',)
 solutions_df
 # %%
 # convert dataframe to a Keyword Data Block dictionary
@@ -532,7 +542,7 @@ solutions.ic
 wellchem = mf6rtm.mup3d.ChemStress('wel')
 
 # Assign solution block number to stress period data (spd)
-# TODO: implement for multiple wells?
+# TODO: implement for multiple wells? See MF6RTM Example 5
 sol_spd = [2] 
 wellchem.set_spd(sol_spd)
 wellchem.sol_spd
@@ -578,12 +588,58 @@ exchanger.set_equilibrate_solutions([1])
 grid_ic_exchange_numbers = np.ones((nlay, 1, ncpl), dtype=int)
 
 exchanger.set_ic(grid_ic_exchange_numbers)
-
-# %%
 exchanger.ic
 
 # %% [markdown]
-# ### Create a reaction model (RM) instance using the `mf6rtm` `Mup3d` class
+# ### EQUILIBRIUM PHASES Block
+#
+# See PHREEQC3 Manual, page ??
+
+# %%
+#equilibrium phases
+# equilibriums_df = pd.read_csv(equilibrium_phases_filepath)
+# equilibriums_df
+
+# %%
+# equilibriums_dict = mf6rtm.utils.parse_equilibriums_dataframe(equilibriums_df)
+# equilibrium_phases = mf6rtm.mup3d.EquilibriumPhases(equilibriums_dict)
+# equilibrium_phases.set_ic(1)
+# equilibrium_phases.data
+
+# %% [markdown]
+# ### KINETICS Block
+#
+# See PHREEQC3 Manual, page ??
+
+# %%
+#kinetics phases
+# kinetic_phases_df = pd.read_csv(kinetic_phases_filepath)
+# kinetic_phases_df
+
+# %%
+# kinetic_phases_dict = mf6rtm.utils.parse_kinetics_dataframe(kinetic_phases_df)
+# kinetic_phases = mf6rtm.mup3d.KineticPhases(kinetic_phases_dict)
+# kinetic_phases.set_ic(1)
+# kinetic_phases.data
+
+# %% [markdown]
+# ### SURFACE Block
+#
+# See PHREEQC3 Manual, page ??
+
+# %%
+#kinetics phases
+# surfaces_df = pd.read_csv(surfaces_filepath)
+# surfaces_df
+
+# %%
+# surfaces_dict = mf6rtm.utils.surfaces_csv_to_dict(surfaces_filepath)
+# surfaces = mf6rtm.mup3d.Surfaces(surfaces_dict)
+# surfaces.set_ic(1)
+# surfaces.data
+
+# %% [markdown]
+# ### Create reaction model (RM) instance with `mf6rtm` `Mup3d` class
 
 # %%
 # create model class, with solution initial conditions
@@ -595,19 +651,18 @@ reaction_model.set_wd(sim_ws)
 # set Phreeqc database
 reaction_model.set_database(phreeqc_database_filepath)
 
-# set exchange phases
+reaction_model.set_initial_temp([23., 23., 23.])
+
+# set chemistry domain initilization to model object
 reaction_model.set_exchange_phases(exchanger)
+# reaction_model.set_phases(equilibrium_phases)
+# reaction_model.set_phases(surfaces)
+# reaction_model.set_phases(kinetic_phases)
 
 # set Phreeqc postfix file
 reaction_model.set_postfix(postfix_filepath)
 
 print(reaction_model.name, reaction_model.grid_shape)
-
-# %%
-reaction_model.solutions.data
-
-# %%
-reaction_model.exchange_phases.data
 
 # %% [markdown]
 # ### Set Component H2O to transport excess H & O
@@ -633,7 +688,8 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # initial concentration array
 # NOTE: It appears that nthreads cannot be increased above 1 if using the Python phreeqcrm package
 # See https://github.com/p-ortega/mf6rtm/issues/54
-reaction_model.initialize(nthreads=1, add_charge_flag=False)
+
+reaction_model.initialize(nthreads=4, add_charge_flag=False)
 
 # %%
 reaction_model.phreeqc_rm.GetThreadCount()
@@ -673,7 +729,7 @@ ic_df
 # %%
 # Dictionary of concentrations in units of moles per m^3 (or mmol/L), 
 # and structured to match the shape of Modflow's grid
-reaction_model.sconc
+# reaction_model.sconc
 
 # %% [markdown]
 # ### Initialize BC Chemistry for all Inflows
@@ -749,7 +805,7 @@ component_name_l = reaction_model.sconc.keys()
 component_name_l
 
 # %%
-reaction_model.sconc['Na']
+reaction_model.sconc['Ca']
 
 # %%
 # create new gwt models for each component
@@ -774,7 +830,7 @@ sim.model_names
 # %%
 # Confirm initial condition concs for Na, from `mup3d.sconc`
 # units of moles per m^3 (or mmol/L), 
-sim.get_model('trans-Na').ic.strt.array
+sim.get_model('trans-Ca').ic.strt.array
 
 # %% [markdown]
 # ## Add Chem Components to Stress Period Data
@@ -831,7 +887,7 @@ spd_welchem_df
 # For modifying the total number of stress periods tdis and the stress period
 # data for any boundary condition packages must be updated. Below resets the 
 # number of stress periods (nper) to the first 5 stress periods.  
-reduce_nper = True 
+reduce_nper = False 
 new_nper = 19
 if reduce_nper == True:
 # Modify tdis nper
@@ -859,11 +915,10 @@ if reduce_nper == True:
 
 # %%
 # modify tdis
-change_nstp = False
+change_nstp = True
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
-    #tdis_spd = tdis_spd[0:5]
-    tdis_spd = tdis_spd[0:5]
+    # tdis_spd = tdis_spd[0:5]
     # tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
     # tdis_spd["nstp"] = tdis_spd["nstp"] / 2 # increase to 2-day timesteps
     #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
@@ -874,7 +929,6 @@ if change_nstp == True:
     # tdis_spd['perlen'][0] = 20
     tdis_spd['perlen'][-1] = 600.
     tdis_spd['nstp'][-1] = 60
-    ##tdis_spd['nstp'][-1] = 60
     sim.get_package("tdis").perioddata.set_data(tdis_spd)
 
 # %%
@@ -968,14 +1022,11 @@ import holoviews as hv
 
 # %%
 cell_to_plot = cellid_flatmap[cellid_layer, cellid_cell]
-cell_to_plot
+cellid_layer, cellid_cell, cell_to_plot
 
 # %%
 plot_df = sout_df.loc[sout_df.cell == cell_to_plot]
 plot_df.columns
-
-# %%
-component_name_l
 
 # %%
 # Create list of components to plot based on intersection with transported components
@@ -984,11 +1035,13 @@ components_to_plot.append('S(6)(mol/kgw)')
 components_to_plot
 
 # %%
-majors_plot = plot_df[components_to_plot].hvplot(ylabel='Concentrations (mol/kgw)')
+major_elements = ['Ca(mol/kgw)', 'Na(mol/kgw)', 'Cl(mol/kgw)', 'K(mol/kgw)', 
+    'Mg(mol/kgw)', 'S(6)(mol/kgw)',]
+majors_plot = plot_df[major_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=False)
 
 # %%
-minors_to_plot = ['S(-2)(mol/kgw)']
-minors_plot = plot_df[minors_to_plot].hvplot(ylabel='Concentrations (mol/kgw)')
+minor_elements = ['S(-2)(mol/kgw)', ]
+minors_plot = plot_df[minor_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=True)
 
 # %%
 phpe_plot = plot_df[['pH', 'pe']].hvplot(ylabel='pH or pe')

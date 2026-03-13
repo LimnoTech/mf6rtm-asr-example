@@ -169,13 +169,13 @@ for file in chem_input_files:
 # Path to PHREEQC Block Input CSV Files
 solutions_filepath = sim_ws / f"{chem_prefix}solutions.csv"
 exchanges_filepath = sim_ws / f"{chem_prefix}exchanges.csv"
-kinetic_phases_filepath = sim_ws / f"{chem_prefix}kinetic_phases.csv"
 equilibrium_phases_filepath = sim_ws / f"{chem_prefix}equilibrium_phases.csv"
 surfaces_filepath = sim_ws / f"{chem_prefix}surfaces.csv"
+kinetic_phases_filepath = sim_ws / f"{chem_prefix}kinetic_phases.csv"
 
 assert solutions_filepath.exists() and exchanges_filepath.exists()
-assert kinetic_phases_filepath.exists()
 assert equilibrium_phases_filepath.exists() and surfaces_filepath.exists()
+assert kinetic_phases_filepath.exists()
 
 # %%
 # Path to file with PHREEQC Input "postfix" instructions

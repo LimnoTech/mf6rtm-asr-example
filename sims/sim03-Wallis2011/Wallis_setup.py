@@ -826,7 +826,7 @@ spd_welchem_df
 change_nstp = True
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
-    #tdis_spd = tdis_spd[0:5]
+    # tdis_spd = tdis_spd[0:5]
     # tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
     # tdis_spd["nstp"] = tdis_spd["nstp"] / 2 # increase to 2-day timesteps
     #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
