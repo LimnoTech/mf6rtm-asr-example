@@ -90,7 +90,8 @@ repo_path
 
 # %%
 # Simulation based on chemical inputs
-simulation_name = working_dir.name
+# simulation_name = working_dir.name
+simulation_name = "MF6RTM Example 5"
 simulation_name
 
 # %%
@@ -610,7 +611,7 @@ equilibrium_phases.data
 
 # %%
 #kinetics phases
-kinetic_phases_df = pd.read_csv(kinetic_phases_filepath)
+kinetic_phases_df = pd.read_csv(kinetic_phases_filepath, comment = '#',)
 kinetic_phases_df
 
 # %%
@@ -688,7 +689,7 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 
 reaction_model.initialize(
     nthreads=4, 
-    add_charge_flag=False,
+    add_charge_flag=True,
 )
 
 # %%
@@ -889,7 +890,7 @@ spd_welchem_df
 change_nstp = True
     # if False, timestep lenght varies by stess period
 nstp_multiplier = 2
-number_of_days_last_stressperiod = 200.
+number_of_days_last_stressperiod = 300.
 
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
@@ -897,7 +898,8 @@ if change_nstp == True:
     # Modify length of last stress period
     tdis_spd['perlen'][-1] = number_of_days_last_stressperiod
     tdis_spd['nstp'][-1] = int(number_of_days_last_stressperiod 
-                               / (nstp_multiplier * 5)) # if 5, then similar length
+                               / (nstp_multiplier * 5)) 
+                            # if 5, then double length of other periods
     sim.get_package("tdis").perioddata.set_data(tdis_spd)
 
 # %%
@@ -966,9 +968,6 @@ reaction_model.run()
 # - 1.6881 mins before `refactor/cdbl_vect`
 
 # %% [markdown]
-#
-
-# %% [markdown]
 # ## Visualize MF6RTM Results
 
 # %%
@@ -1000,11 +999,19 @@ import hvplot.pandas
 import holoviews as hv
 
 # %%
-cell_to_plot = cellid_flatmap[cellid_layer, cellid_cell]
-cellid_layer, cellid_cell, cell_to_plot
+wel_cellid
 
 # %%
-plot_df = sout_df.loc[sout_df.cell == cell_to_plot]
+# Plot one cell away from well
+cell_to_plot = (wel_cellid[0], wel_cellid[1]+1)
+cell_to_plot
+
+# %%
+cell_flatid = cellid_flatmap[*cell_to_plot]
+cell_flatid
+
+# %%
+plot_df = sout_df.loc[sout_df.cell == cell_flatid]
 plot_df.columns
 
 # %%
@@ -1024,12 +1031,13 @@ minor_elements = ['S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)',
 minors_plot = plot_df[minor_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=True)
 
 # %%
-phpe_plot = plot_df[['pH', 'pe']].hvplot(ylabel='pH or pe')
+ph_plot = plot_df[['pH']].hvplot(ylabel='pH')
+pe_plot = plot_df[['pe']].hvplot(ylabel='pe')
 
 # %%
-plot_list = [majors_plot, minors_plot, phpe_plot]
+plot_list = [majors_plot, minors_plot, ph_plot, pe_plot]
 hv.Layout(plot_list).cols(1).opts(
-    title=f'MF6RTM Results for "{simulation_name}" at cellid {wel_cellid}',
+    title=f'MF6RTM Results for "{simulation_name}" at cellid {cell_to_plot}',
     shared_axes=False, 
     axiswise=True,
 )
