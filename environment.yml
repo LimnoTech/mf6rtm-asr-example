@@ -30,6 +30,7 @@ dependencies:
   # MF6RTM packages & dependencies
   # - mf6rtm # installed via conda develop
   # - phreeqcrm # install via pip for latest version
+  # - openmp #
   - toml
 
   # Deltares iMod toolset for using xarray, geopandas, dask, pyVista with Modflow 

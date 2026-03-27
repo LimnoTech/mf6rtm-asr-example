@@ -33,6 +33,9 @@
 # - If using VS Code, install the the [Jupytext Sync extension](https://jupytext.readthedocs.io/en/latest/vs-code.html) for maximum benefit.
 
 # %% [markdown]
+#
+
+# %% [markdown]
 # # Installation and Setup
 #
 # Create a custom conda virtual environment can be created using the `environment.yml` file included in this repo. 
@@ -201,14 +204,14 @@ print("MF6RTM-created PHREEQCRM YAML file exists?", phreeqcrm_yaml_filepath.exis
 #
 
 # %%
-use_version_installed_with_modflowapi = False
+use_version_installed_with_modflowapi = True
 # user = "Laren"
 user = "Anthony"
 os = "macarm"
 
 # version = "6.4.2"
-version = "6.5.0"
-# version = "6.7.0.dev3"
+# version = "6.5.0"
+version = "6.7.0"
 
 try:
     mf6_exe = Path(flopy.which("mf6"))
@@ -673,8 +676,19 @@ c_dbl_vect = reaction_model.init_conc_array_phreeqc
 # %%
 # # %%timeit
 # # Alternate implementation
-# np.reshape(reaction_model.init_conc_array_phreeqc, (len(reaction_model.components), -1))
+# np.reshape(c_dbl_vect, (reaction_model.ncomps, reaction_model.nxyz))
 # # 435 ns ± 7.06 ns
+
+# %%
+conc = np.reshape(c_dbl_vect, (reaction_model.ncomps, reaction_model.nxyz))
+conc.shape
+
+# %%
+# %%timeit
+np.reshape(conc, (reaction_model.ncomps, reaction_model.nxyz))
+
+# %%
+conc[2]
 
 # %% [markdown]
 # 1.77x faster!
@@ -1023,6 +1037,9 @@ reaction_model.run()
 #
 # Run times:
 # - 10% faster than grid 1
+
+# %%
+dir(reaction_model)
 
 # %% [markdown]
 # ## Visualize MF6RTM Results

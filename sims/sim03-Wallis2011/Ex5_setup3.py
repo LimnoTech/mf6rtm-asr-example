@@ -78,8 +78,7 @@ import utils # from this repo
 #
 # Use the [pathlib](https://docs.python.org/3/library/pathlib.html) library 
 # (built-in to Python 3) to manage paths indpendentely of OS or environment. 
-# See this [blog post]
-# (https://medium.com/@ageitgey/python-3-quick-tip-the-easy-way-to-deal-with-file-paths-on-windows-mac-and-linux-11a072b58d5f) 
+# See this [blog post](https://medium.com/@ageitgey/python-3-quick-tip-the-easy-way-to-deal-with-file-paths-on-windows-mac-and-linux-11a072b58d5f) 
 # to learn about the many benefits over using the `os` library.
 
 # %%
@@ -217,8 +216,8 @@ user = "Anthony"
 os = "macarm"
 
 # version = "6.4.2"
-version = "6.5.0"
-# version = "6.7.0.dev3"
+# version = "6.5.0"
+version = "6.7.0"
 
 try:
     mf6_exe = Path(flopy.which("mf6"))
@@ -687,7 +686,10 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # NOTE: It appears that nthreads cannot be increased above 1 if using the Python phreeqcrm package
 # See https://github.com/p-ortega/mf6rtm/issues/54
 
-reaction_model.initialize(nthreads=4, add_charge_flag=False)
+reaction_model.initialize(
+    nthreads=4, 
+    add_charge_flag=False,
+)
 
 # %%
 reaction_model.phreeqc_rm.GetThreadCount()
@@ -879,23 +881,32 @@ spd_welchem_df = pd.concat(spd_welchem_df_dict.values(), keys=spd_welchem_df_dic
 spd_welchem_df = spd_welchem_df.droplevel(level=1)
 spd_welchem_df
 
+# %% [markdown]
+# ## Modify timestep length
+
 # %%
-# modify tdis
+# modify tdis to change timestep length and total simulation time
 change_nstp = True
+    # if False, timestep lenght varies by stess period
+nstp_multiplier = 2
+number_of_days_last_stressperiod = 200.
+
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
-    #tdis_spd = tdis_spd[0:5]
-    # tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
-    # tdis_spd["nstp"] = tdis_spd["nstp"] / 2 # increase to 2-day timesteps
-    #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
-    #for t in range(len(tdis_spd)):
-    #    tdis_spd['nstp'][t] = 1
-    #    tdis_spd['perlen'][t] = 1.
-    #tdis_spd['nstp'][0] = 20 # set first stress period to 20 days with 1 timestep per day
-    # tdis_spd['perlen'][0] = 20
-    tdis_spd['perlen'][-1] = 600.
-    tdis_spd['nstp'][-1] = 60
+    tdis_spd["nstp"] = tdis_spd["nstp"] * nstp_multiplier
+    # Modify length of last stress period
+    tdis_spd['perlen'][-1] = number_of_days_last_stressperiod
+    tdis_spd['nstp'][-1] = int(number_of_days_last_stressperiod 
+                               / (nstp_multiplier * 5)) # if 5, then similar length
     sim.get_package("tdis").perioddata.set_data(tdis_spd)
+
+# %%
+tdis_spd_df = pd.DataFrame.from_records(tdis.perioddata.get_data())
+tdis_spd_df['stp_len'] = tdis_spd_df['perlen'] / tdis_spd_df['nstp']
+tdis_spd_df
+
+# %% [markdown]
+# ## Remove transport models that are not needed
 
 # %%
 # Remove transport models for testing
@@ -952,6 +963,10 @@ reaction_model.run()
 #   - Tried modifying chemistry inputs, to get more reasonable pH, ALK, DIC, and charge balance but still crashed
 # - 1.5125 mins with all but KINETICS
 # - 1.5717 mins all, including KINETICS, but removing calcite
+# - 1.6881 mins before `refactor/cdbl_vect`
+
+# %% [markdown]
+#
 
 # %% [markdown]
 # ## Visualize MF6RTM Results

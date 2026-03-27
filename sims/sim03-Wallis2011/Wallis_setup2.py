@@ -213,7 +213,7 @@ print("MF6RTM-created PHREEQCRM YAML file exists?", phreeqcrm_yaml_filepath.exis
 #
 
 # %%
-use_version_installed_with_modflowapi = False
+use_version_installed_with_modflowapi = True
 # user = "Laren"
 user = "Anthony"
 os = "macarm"
@@ -689,7 +689,10 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # NOTE: It appears that nthreads cannot be increased above 1 if using the Python phreeqcrm package
 # See https://github.com/p-ortega/mf6rtm/issues/54
 
-reaction_model.initialize(nthreads=4, add_charge_flag=False)
+reaction_model.initialize(
+    nthreads=4, 
+    add_charge_flag=False,
+)
 
 # %%
 reaction_model.phreeqc_rm.GetThreadCount()
@@ -881,6 +884,9 @@ spd_welchem_df = pd.concat(spd_welchem_df_dict.values(), keys=spd_welchem_df_dic
 spd_welchem_df = spd_welchem_df.droplevel(level=1)
 spd_welchem_df
 
+# %% [markdown]
+# ## Modify number of stress periods
+
 # %%
 # Modify number of stress periods to check output before kernel crash.
 
@@ -913,23 +919,29 @@ if reduce_nper == True:
 ############################################################################
 
 
+# %% [markdown]
+# ## Modify timestep length
+
 # %%
-# modify tdis
+# modify tdis to change timestep length and total simulation time
 change_nstp = True
+    # if False, timestep lenght varies by stess period
+nstp_multiplier = 2
+number_of_days_last_stressperiod = 200.
+
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
-    # tdis_spd = tdis_spd[0:5]
-    # tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
-    # tdis_spd["nstp"] = tdis_spd["nstp"] / 2 # increase to 2-day timesteps
-    #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
-    #for t in range(len(tdis_spd)):
-    #    tdis_spd['nstp'][t] = 1
-    #    tdis_spd['perlen'][t] = 1.
-    #tdis_spd['nstp'][0] = 20 # set first stress period to 20 days with 1 timestep per day
-    # tdis_spd['perlen'][0] = 20
-    tdis_spd['perlen'][-1] = 600.
-    tdis_spd['nstp'][-1] = 60
+    tdis_spd["nstp"] = tdis_spd["nstp"] * nstp_multiplier
+    # Modify length of last stress period
+    tdis_spd['perlen'][-1] = number_of_days_last_stressperiod
+    tdis_spd['nstp'][-1] = int(number_of_days_last_stressperiod 
+                               / (nstp_multiplier * 5)) # if 5, then similar length
     sim.get_package("tdis").perioddata.set_data(tdis_spd)
+
+# %%
+tdis_spd_df = pd.DataFrame.from_records(tdis.perioddata.get_data())
+tdis_spd_df['stp_len'] = tdis_spd_df['perlen'] / tdis_spd_df['nstp']
+tdis_spd_df
 
 # %%
 # Remove transport models for testing
@@ -1041,7 +1053,7 @@ majors_plot = plot_df[major_elements].hvplot(ylabel='Concentrations (mol/kgw)', 
 
 # %%
 minor_elements = ['S(-2)(mol/kgw)', ]
-minors_plot = plot_df[minor_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=True)
+minors_plot = plot_df[minor_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=False)
 
 # %%
 phpe_plot = plot_df[['pH', 'pe']].hvplot(ylabel='pH or pe')
