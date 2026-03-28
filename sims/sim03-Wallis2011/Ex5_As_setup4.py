@@ -16,9 +16,9 @@
 # ---
 
 # %% [markdown]
-# # ASR Simulation 3: Grid 2 (10ft near well) with Chemistry from MF6RTM Example 5 (Appelo 1998) 
+# # ASR Simulation 3: Grid 2 (10ft near well) with Chemistry from MF6RTM Example 5 (Appelo 1998) and Arsenic Chemistry from LimnoTech coal ash work.
 #
-# This simulation adds **arsenic redox chemistry** -- from Wallis et al 2011 -- to the 3D transport models of the simple ASR test case.
+# This simulation adds **arsenic redox chemistry** -- from MF6RTM Example 5 (Appelo 1998) and Arsenic Chemistry from LimnoTech coal ash work -- to the 3D transport models of the simple ASR test case.
 #
 # For information and exploration of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`.
 #
@@ -186,7 +186,8 @@ assert postfix_filepath.exists()
 # %%
 # Select PHREEQC database file
 # phreeqc_database_file = "datab.dat"
-phreeqc_database_file = "phreeqc.dat" # used in Ex5 & 6?
+# phreeqc_database_file = "phreeqc.dat" # used in Ex5 & 6?
+phreeqc_database_file = "phreeqc_As.dat" # modified with As reactions
 # phreeqc_database_file = 'pht3d_datab.dat' # used in Ex4
 phreeqc_databases_path = repo_path / "data" / "chem_databases"
 phreeqc_database_filepath = phreeqc_databases_path / phreeqc_database_file
@@ -688,7 +689,7 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # See https://github.com/p-ortega/mf6rtm/issues/54
 
 reaction_model.initialize(
-    nthreads=4, 
+    nthreads=8, 
     add_charge_flag=True,
 )
 
@@ -889,7 +890,7 @@ spd_welchem_df
 # modify tdis to change timestep length and total simulation time
 change_nstp = True
     # if False, timestep lenght varies by stess period
-nstp_multiplier = 2
+nstp_multiplier = 12
 number_of_days_last_stressperiod = 300.
 
 if change_nstp == True:
@@ -931,7 +932,7 @@ sim.write_simulation()
 # To confirm that conservative transport is occuring as expected.
 
 # %%
-utils.run_models(sim, silent=False)
+# utils.run_models(sim, silent=False)
 
 # %% [markdown]
 # ## Plot MF6 Transport Results with no Reactions
@@ -958,14 +959,9 @@ components_to_plot
 reaction_model.run()
 
 # %% [markdown]
-# Using MF6RTM Chemistry
-# - Runs with SOLUTIONS, EXCHANGES
-# - Crashes with SOLUTIONS, EXCHANGES, EQUILIBRIUM PHASES, SURFACE, KINETICS
-#   - C(4) concs negative after 2nd timestep
-#   - Tried modifying chemistry inputs, to get more reasonable pH, ALK, DIC, and charge balance but still crashed
-# - 1.5125 mins with all but KINETICS
-# - 1.5717 mins all, including KINETICS, but removing calcite
-# - 1.6881 mins before `refactor/cdbl_vect`
+# Using MF6RTM + Coal Ash Chemistry
+# Add Arsenic!!!
+# - Crashes at sp5-ts36. step_multiplier=12; Knobs: step_size=10, pe_step_size=5, diag_scale=false
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
