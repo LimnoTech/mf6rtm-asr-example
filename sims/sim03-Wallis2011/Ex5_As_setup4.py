@@ -97,7 +97,7 @@ simulation_name
 # %%
 # Path to simulation workspace, which is git-ignored and 
 # will get over-written with each run of this notebook
-sim_ws = working_dir / 'ws2x' # Grid 2
+sim_ws = working_dir / 'ws2xas' # Grid 2
 sim_ws.mkdir(parents=True, exist_ok=True)
 
 # %% [markdown]
@@ -153,7 +153,7 @@ mf6_input_path = sim_ws
 
 # %%
 # Phreeqc input file folder
-chem_inputs_path = working_dir / "chem_inputs"
+chem_inputs_path = working_dir / "chem_inputs_Ex5_As"
 
 chem_prefix = "ex5_"
 chem_input_files_match = chem_inputs_path.glob(f"{chem_prefix}*")
