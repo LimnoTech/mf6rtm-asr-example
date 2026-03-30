@@ -894,7 +894,7 @@ spd_welchem_df
 # modify tdis to change timestep length and total simulation time
 change_nstp = True
     # if False, timestep lenght varies by stess period
-nstp_multiplier = 12
+nstp_multiplier = 4
 number_of_days_last_stressperiod = 300.
 
 if change_nstp == True:
@@ -902,9 +902,8 @@ if change_nstp == True:
     tdis_spd["nstp"] = tdis_spd["nstp"] * nstp_multiplier
     # Modify length of last stress period
     tdis_spd['perlen'][-1] = number_of_days_last_stressperiod
-    tdis_spd['nstp'][-1] = int(number_of_days_last_stressperiod 
-                               / (nstp_multiplier * 5)) 
-                            # if 5, then double length of other periods
+    tdis_spd['nstp'][-1] = int(number_of_days_last_stressperiod * nstp_multiplier / 20)
+                    # dividing by 20 gives about double the length of other periods
     sim.get_package("tdis").perioddata.set_data(tdis_spd)
 
 # %%
@@ -1019,22 +1018,23 @@ plot_df.columns
 
 # %%
 major_elements = ['Ca(mol/kgw)', 'Mg(mol/kgw)', 'Cl(mol/kgw)',
-       'S(6)(mol/kgw)', 'C(4)(mol/kgw)', 'Alk(eq/kgw)']
+       'S(6)(mol/kgw)', 'C(4)(mol/kgw)', 'Alk(eq/kgw)', 'charge(eq)']
 majors_plot = plot_df[major_elements].hvplot(ylabel='Majors Conc (mol/kgw)', logy=True)
 
 # %%
 minor_elements = ['S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)', 'Fe(3)(mol/kgw)',
     # 'As(mol/kgw)',
 ]
-minors_plot = plot_df[minor_elements].hvplot(ylabel='Minors Conc (mol/kgw)', logy=False, ylim=(None,None))
+minors_plot = plot_df[minor_elements].hvplot(ylabel='Minors Conc (mol/kgw)', logy=True, ylim=(None,None))
 
 # %%
 ph_plot = plot_df[['pH']].hvplot(ylabel='pH')
 pe_plot = plot_df[['pe']].hvplot(ylabel='pe')
 
 # %%
-charge_balance = ['charge(eq)',	'pct_err',]
+charge_balance = ['pct_err',]
 charge_plot = plot_df[charge_balance].hvplot.line(ylabel='equivalents (eq/kgw)', logy=False)
+charge_plot
 
 # %%
 plot_list = [majors_plot, minors_plot, ph_plot, pe_plot, charge_plot]

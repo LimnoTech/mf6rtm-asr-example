@@ -27,9 +27,9 @@ SELECTED_OUTPUT
   -totals   Ca Mg Cl S(6) C(4)
             S(-2) Fe(2) Fe(3)
             As(+5)
-  # -saturation_indices Goethite Calcite Pyrite
+  -saturation_indices Goethite Calcite Pyrite
   # -gases CO2(g) N2(g) O2(g)
-  # -kinetic_reactants Pyrite
+  -kinetic_reactants Pyrite
 USER_PUNCH
   -headings cell 
   -start
