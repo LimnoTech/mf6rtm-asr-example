@@ -29,8 +29,8 @@ dependencies:
 
   # MF6RTM packages & dependencies
   # - mf6rtm # installed via conda develop
-  # - phreeqcrm # install via pip for latest version
-  # - openmp #
+  - phreeqcrm # install via pip; latest version not on conda forge
+  # - openmp # NOTE: llvm-openmp is installed instead by 
   - toml
 
   # Deltares iMod toolset for using xarray, geopandas, dask, pyVista with Modflow 
@@ -46,6 +46,9 @@ dependencies:
   # Visualization (optional)
   - hvplot  # hvPlot installs most HoloViz libs, https://holoviz.org
   - geoviews
+  - selenium # required to save HoloViz/Bokeh plots
+  - firefox # required to save HoloViz/Bokeh plots
+  - geckodriver # required to save HoloViz/Bokeh plots. Requires Firefox installed and added to system path
 
   # Interactivity via Jupyter Notebooks
   - jupyterlab # installs ipykernel
@@ -87,5 +90,5 @@ dependencies:
   - git  # for pip installing directly from GitHub
   # PIP install requirements only if it is not  possible with conda
   - pip:
-    - phreeqcrm
+    # - phreeqcrm  # v0.17 doesn't have OpenMP for MacOS. use condaforge install
   

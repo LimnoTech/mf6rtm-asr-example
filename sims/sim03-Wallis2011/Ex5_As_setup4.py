@@ -46,6 +46,7 @@
 import os
 import shutil
 from pathlib import Path
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -74,7 +75,7 @@ import utils # from this repo
 # Run the `01-GettingStarted.ipynb` notebook to install `mf6rtm` using `conda develop`.
 
 # %% [markdown]
-# ## Set Paths to Input and Output Files with `pathlib`
+# ## Set Paths to Executables, Inputs, and Outputs with `pathlib`
 #
 # Use the [pathlib](https://docs.python.org/3/library/pathlib.html) library 
 # (built-in to Python 3) to manage paths indpendentely of OS or environment. 
@@ -101,7 +102,61 @@ sim_ws = working_dir / 'ws2xas' # Grid 2
 sim_ws.mkdir(parents=True, exist_ok=True)
 
 # %% [markdown]
-# ### Reset Workspace
+# ### MF6 Executable & Library
+# Different versions can be downloaded from: https://github.com/MODFLOW-ORG/executables to a folder similar to this: `bin/mf6.5.0/macarm` 
+#
+# On Mac, will need to give permissions with these terminal commands from the 
+# ```sh
+# xattr -dr com.apple.quarantine mf6
+# xattr -dr com.apple.quarantine libmf6.dylib
+# ```
+#
+
+# %%
+use_version_installed_with_modflowapi = False
+# user = "Laren"
+user = "Anthony"
+os = "macarm"
+
+# version = "6.4.2"
+# version = "6.5.0"
+version = "6.7.0"
+
+try:
+    mf6_exe = Path(flopy.which("mf6"))
+    dll = mf6_exe.parent.parent / "lib" / "libmf6.dylib" # MacOS only for now
+    mf6_version = !{mf6_exe} --version
+    mf6dll_version = ModflowApi(dll).get_version()
+    print(f"Executable & library installed with modflowapi: {mf6_version[1]}, dll: {mf6dll_version}")
+except Exception:
+    print("Modflow executables not found in environment")
+
+if use_version_installed_with_modflowapi:
+    print(f"Using executable installed with modflowapi: {mf6_version[1]}")
+else:
+    if user == "Lauren":
+        # If using executable from GMS
+        mf6_bin_path = Path(r"C:/program files/gms 10.8 64-bit/python/lib/site-packages/xms/executables/modflow6")
+        mf6_exe = mf6_bin_path / "mf6.exe"
+        dll = mf6_bin_path / "libmf6.dll"
+    elif user == "Anthony":
+        mf6_potential_paths = [
+            repo_path / "bin" / f"mf{version}" / os,
+            repo_path / "bin" / f"mf{version}_{os}" / "bin",
+        ]
+        for path in mf6_potential_paths:
+            if path.exists():
+                mf6_bin_path = path
+        mf6_exe = mf6_bin_path / "mf6"
+        dll = mf6_bin_path / "libmf6.dylib"
+    else:
+        print("Create a new user and set paths to mf6 and libmf6")
+    mf6_version = !{mf6_exe} --version
+    mf6dll_version = ModflowApi(dll).get_version()
+    print(f"User-selected executable ({mf6_exe.exists()}): {mf6_version[1]}, dll: {mf6dll_version}")
+
+# %% [markdown]
+# ### Reset Workspace & copy files
 
 # %%
 # Delete previous contents from simulation
@@ -114,6 +169,12 @@ if sim_ws.exists():
         print(f"Error: {sim_ws} : {e.strerror}")
 else:
     print(f"Directory '{sim_ws}' does not exist.")
+
+# %%
+# Copy modflow executable and library to simulation workspace
+shutil.copy2(mf6_exe, sim_ws)
+shutil.copy2(dll, sim_ws)
+(sim_ws/mf6_exe.name).exists()
 
 # %% [markdown]
 # ### Modflow Inputs
@@ -199,66 +260,6 @@ assert phreeqc_database_filepath.exists(), "PHREEQC database file missing"
 phreeqc_input_filepath = sim_ws / "phinp.dat"
 # PhreeqcRM YAML config file
 phreeqcrm_yaml_filepath = sim_ws / "mf6rtm.yaml"
-
-# %% [markdown]
-# ## Set Path to MF6 Executable & Library
-# Different versions can be downloaded from: https://github.com/MODFLOW-ORG/executables to a folder similar to this: `bin/mf6.5.0/macarm` 
-#
-# On Mac, will need to give permissions with these terminal commands from the 
-# ```sh
-# xattr -dr com.apple.quarantine mf6
-# xattr -dr com.apple.quarantine libmf6.dylib
-# ```
-#
-
-# %%
-use_version_installed_with_modflowapi = False
-# user = "Laren"
-user = "Anthony"
-os = "macarm"
-
-# version = "6.4.2"
-# version = "6.5.0"
-version = "6.7.0"
-
-try:
-    mf6_exe = Path(flopy.which("mf6"))
-    dll = mf6_exe.parent.parent / "lib" / "libmf6.dylib" # MacOS only for now
-    mf6_version = !{mf6_exe} --version
-    mf6dll_version = ModflowApi(dll).get_version()
-    print(f"Executable & library installed with modflowapi: {mf6_version[1]}, dll: {mf6dll_version}")
-except Exception:
-    print("Modflow executables not found in environment")
-
-if use_version_installed_with_modflowapi:
-    print(f"Using executable installed with modflowapi: {mf6_version[1]}")
-else:
-    if user == "Lauren":
-        # If using executable from GMS
-        mf6_bin_path = Path(r"C:/program files/gms 10.8 64-bit/python/lib/site-packages/xms/executables/modflow6")
-        mf6_exe = mf6_bin_path / "mf6.exe"
-        dll = mf6_bin_path / "libmf6.dll"
-    elif user == "Anthony":
-        mf6_potential_paths = [
-            repo_path / "bin" / f"mf{version}" / os,
-            repo_path / "bin" / f"mf{version}_{os}" / "bin",
-        ]
-        for path in mf6_potential_paths:
-            if path.exists():
-                mf6_bin_path = path
-        mf6_exe = mf6_bin_path / "mf6"
-        dll = mf6_bin_path / "libmf6.dylib"
-    else:
-        print("Create a new user and set paths to mf6 and libmf6")
-    mf6_version = !{mf6_exe} --version
-    mf6dll_version = ModflowApi(dll).get_version()
-    print(f"User-selected executable ({mf6_exe.exists()}): {mf6_version[1]}, dll: {mf6dll_version}")
-
-# %%
-# Copy executable and library to simulation workspace
-shutil.copy2(mf6_exe, sim_ws)
-shutil.copy2(dll, sim_ws)
-(sim_ws/mf6_exe.name).exists()
 
 # %% [markdown]
 # # Load Modflow 6 Simulation for Reactive Transport
@@ -731,7 +732,7 @@ ic_df
 # %%
 # Dictionary of concentrations in units of moles per m^3 (or mmol/L), 
 # and structured to match the shape of Modflow's grid
-# reaction_model.sconc
+# reaction_model.sconc  # comment out to reduce outputs
 
 # %% [markdown]
 # ### Initialize BC Chemistry for all Inflows
@@ -768,14 +769,17 @@ bc_df
 spd_wel_df
 
 # %%
-# # Append Conc data to Well Stress Period Data list, 
-# # NOTE: only run this once
-# for i in range(len(wel_spd)):
-#     wel_spd[i].extend(reaction_model.wel.data[i])
-# wel_spd
+# Append Conc data to Well Stress Period Data list, 
+# NOTE: This is done in the "Add Chem to Modflow: Add Chem Components to Stress Period Data" section below
 
 # %% [markdown]
-# ### Unit Conversions
+# ## Get Output Variable Names
+
+# %%
+reaction_model.phreeqc_rm.GetSelectedOutputHeadings()
+
+# %% [markdown]
+# ## Unit Conversions
 #
 # - Although MODFLOW is technically agnostic about chemical concentration units used for transport, we have found solver issues when units between transport and reaction models are different.
 #
@@ -962,28 +966,29 @@ reaction_model.run()
 # Using MF6RTM + Coal Ash Chemistry
 # Add Arsenic!!!
 # - Crashes at sp5-ts36. step_multiplier=12; Knobs: step_size=10, pe_step_size=5, diag_scale=false
+# Reboot
+# - Crashes at sp3-ts40?.step_multiplier=20; Knobs above & tolerance=1e-18
+# - Crashes at sp6-ts60. step_multiplier=20; Knobs above & tolerance=1e-17
 
 # %% [markdown]
-# ## Visualize MF6RTM Results
+#
+
+# %% [markdown]
+# ## Visualize MF6RTM Results from PhreeqcRM
 
 # %%
-# read in mf6 conc results
-sim_rxn = flopy.mf6.MFSimulation.load(
-    sim_ws=sim_ws,
-    exe_name=mf6_exe,  #'mf6',
-    verbosity_level=0,
-)
-conc_rxn = utils.get_concentrations(sim_rxn, component_name_l)
-times_c_rxn = utils.get_times_c(sim_rxn, component_name_l)
-
-# %%
-# read in phreeqc results 
+# read in phreeqc selected output  
 sout_df = pd.read_csv(
     sim_ws / 'sout.csv', 
     sep = ',', 
     skipinitialspace=True, 
-    index_col=[0],
+    index_col="time",
 )
+# Move "cell" to second column
+# 1. Pop the column to move it out of the DataFrame
+column_to_move = sout_df.pop('cell')
+# 2. Insert the column at index 0 (the front)
+sout_df.insert(0, 'cell', column_to_move)
 sout_df.info()
 sout_df
 
@@ -995,7 +1000,8 @@ import hvplot.pandas
 import holoviews as hv
 
 # %%
-wel_cellid
+# wel_cellid
+wel_cellid = (2, 462)
 
 # %%
 # Plot one cell away from well
@@ -1003,7 +1009,8 @@ cell_to_plot = (wel_cellid[0], wel_cellid[1]+1)
 cell_to_plot
 
 # %%
-cell_flatid = cellid_flatmap[*cell_to_plot]
+# cell_flatid = cellid_flatmap[*cell_to_plot]
+cell_flatid = 2376
 cell_flatid
 
 # %%
@@ -1011,32 +1018,66 @@ plot_df = sout_df.loc[sout_df.cell == cell_flatid]
 plot_df.columns
 
 # %%
-# Create list of components to plot based on intersection with transported components
-components_to_plot = [f'{c}' for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na',]]
-components_to_plot.append('S(6)')
-components_to_plot
-
-# %%
 major_elements = ['Ca(mol/kgw)', 'Mg(mol/kgw)', 'Cl(mol/kgw)',
-       'S(6)(mol/kgw)', 'C(4)(mol/kgw)',]
-majors_plot = plot_df[major_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=True)
+       'S(6)(mol/kgw)', 'C(4)(mol/kgw)', 'Alk(eq/kgw)']
+majors_plot = plot_df[major_elements].hvplot(ylabel='Majors Conc (mol/kgw)', logy=True)
 
 # %%
-minor_elements = ['S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)',
-       'Fe(3)(mol/kgw)',]
-minors_plot = plot_df[minor_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=True)
+minor_elements = ['S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)', 'Fe(3)(mol/kgw)',
+    # 'As(mol/kgw)',
+]
+minors_plot = plot_df[minor_elements].hvplot(ylabel='Minors Conc (mol/kgw)', logy=False, ylim=(None,None))
 
 # %%
 ph_plot = plot_df[['pH']].hvplot(ylabel='pH')
 pe_plot = plot_df[['pe']].hvplot(ylabel='pe')
 
 # %%
-plot_list = [majors_plot, minors_plot, ph_plot, pe_plot]
-hv.Layout(plot_list).cols(1).opts(
-    title=f'MF6RTM Results for "{simulation_name}" at cellid {cell_to_plot}',
+charge_balance = ['charge(eq)',	'pct_err',]
+charge_plot = plot_df[charge_balance].hvplot.line(ylabel='equivalents (eq/kgw)', logy=False)
+
+# %%
+plot_list = [majors_plot, minors_plot, ph_plot, pe_plot, charge_plot]
+formatted_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+chem_layout_plot = hv.Layout(plot_list).cols(1).opts(
+    title=f'MF6RTM Results for "{simulation_name}" at cellid {cell_to_plot}, run {formatted_time}',
     shared_axes=False, 
     axiswise=True,
 )
+chem_layout_plot
+
+# %% [markdown]
+# ## Save Figures & Outputs
+
+# %%
+plot_path = working_dir / f"{sim_ws}_plots"
+plot_path.mkdir(exist_ok=True, parents=True)
+plot_path
+
+# %%
+file_time = formatted_time.replace("-", ".").replace(":",".").replace(" ", "_")
+plot_filename = (f'{simulation_name}_run_{file_time}').replace(" ", "_")
+plot_filename
+
+# %%
+hv.save(chem_layout_plot, plot_path / f'{plot_filename}.png')
+hv.save(chem_layout_plot, plot_path / f'{plot_filename}.html')
+
+# %%
+sout_df.to_parquet(plot_path / f'sout_df_{file_time}.parquet', compression='zstd', index=True)
+
+# %%
+sim_ws / f"phreeqc.chem_{file_time}.txt"
+
+# %%
+nstp_multiplier
+
+# %%
+nstp_multiplier = 40
+
+# %%
+shutil.copy2(sim_ws / "_phreeqc.chem.txt", plot_path / f"phreeqc.chem_{file_time}.txt")
+shutil.copy2(sim_ws / "phinp.dat", plot_path / f"phinp_{nstp_multiplier}xnstp_{file_time}.dat")
 
 # %% [markdown]
 # # END
