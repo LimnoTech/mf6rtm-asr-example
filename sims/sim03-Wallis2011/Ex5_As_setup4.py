@@ -337,6 +337,7 @@ nxyz
 
 # %%
 # lookup cell ID of wel package cell
+# NOTE: indices from flopy use Python indexing from 0
 wel_spd = gwf.wel.stress_period_data.array
 wel_cellid = wel_spd[0]["cellid"][0]
 display(wel_cellid)
@@ -398,6 +399,9 @@ cell_volumes = np.zeros((nlay,ncpl))
 # calculate volume for entire grid
 for k in range(nlay):
     cell_volumes[k,:] = cell2D_df['surface_area'].to_numpy() * thickness[k,:]
+
+# %%
+cell2D_df
 
 # %%
 # volume of cells near well screen
@@ -658,7 +662,7 @@ reaction_model.set_initial_temp([7., 7., 7.])
 # set chemistry domain initilization to model object
 reaction_model.set_exchange_phases(exchanger)
 reaction_model.set_phases(equilibrium_phases)
-reaction_model.set_phases(surfaces)
+# reaction_model.set_phases(surfaces)
 # reaction_model.set_phases(kinetic_phases)
 
 # set Phreeqc postfix file
@@ -692,9 +696,10 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # See https://github.com/p-ortega/mf6rtm/issues/54
 
 reaction_model.initialize(
-    nthreads=8, 
+    nthreads=4, 
     add_charge_flag=True,
 )
+# NOTE: If this hangs, check all input files for "!" 
 
 # %%
 reaction_model.phreeqc_rm.GetThreadCount()
@@ -922,6 +927,8 @@ tdis_spd_df['q'] = spd_wel_df['q']
 tdis_spd_df['cum_q-days'] = (tdis_spd_df['q'] * tdis_spd_df['perlen']).cumsum()
 tdis_spd_df
 
+# %%
+
 # %% [markdown]
 # ## Remove transport models that are not needed
 
@@ -955,11 +962,6 @@ sim.write_simulation()
 #
 # For addtional result plots of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`
 
-# %%
-# Create list of components to plot based on intersection with transported components
-components_to_plot = [c for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na']]
-components_to_plot
-
 # %% [markdown]
 # # Reactive Transport Simulation
 # Using MF6RTM
@@ -981,8 +983,9 @@ reaction_model.run()
 # - Crashes at sp6-ts60. step_multiplier=20; Knobs above & tolerance=1e-17
 # Reboot
 # - 3.5365 mins. No As. 4xnstp. +tolerance=1e-16
-# - Crasshes at sp4-ts12. 4xnstp +tolerance=1e-18
-# - 7.8593 mins. +As+O2. 8xnstp
+# - Crashes sp4-ts12. 4xnstp +tolerance=1e-18
+# - 7.8593 mins. +O2. 8xnstp
+# - Crashes sp2-ts16. 8xnstp +O2 +As
 
 # %% [markdown]
 # ## Visualize MF6RTM Results from PhreeqcRM
@@ -1001,7 +1004,7 @@ column_to_move = sout_df.pop('cell')
 # 2. Insert the column at index 0 (the front)
 sout_df.insert(0, 'cell', column_to_move)
 sout_df.info()
-perlen
+sout_df
 
 # %%
 sout_df.describe()
@@ -1021,10 +1024,11 @@ import holoviews as hv
 # %%
 # wel_cellid
 wel_cellid = (2, 462)
+wel_cellid = (1, 941) # biggest residual on gwf from mfsim.lst
 
 # %%
 # Plot one cell away from well
-cell_to_plot = (wel_cellid[0], wel_cellid[1]+1)
+cell_to_plot = (wel_cellid[0], wel_cellid[1])
 cell_to_plot
 
 # %%
@@ -1052,7 +1056,10 @@ minor_elements = ['S(6)(mol/kgw)', 'S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)', 'Fe(3)(mo
     'As(+5)(mol/kgw)' if arsenic_on else "",
     'O(0)(mol/kgw)',
 ]
-minors_plot = plot_df[minor_elements].hvplot(ylabel='Minors Conc (mol/kgw)', logy=True, ylim=(None,None))
+minors_plot = plot_df[minor_elements].hvplot(
+    ylabel='Minors Conc (mol/kgw)', 
+    logy=True, ylim=(1e-24,5e-5)
+)
 
 # %%
 ph_plot = plot_df[['pH']].hvplot(ylabel='pH')

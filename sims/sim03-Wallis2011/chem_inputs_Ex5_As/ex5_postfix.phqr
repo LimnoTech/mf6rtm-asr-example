@@ -1,23 +1,23 @@
 KNOBS
-  -iterations    250        ! Default: 100
-  -convergence_tolerance 1e-12  ! Default: 1e-8 or 1e-12 when -high_precision true
-  -tolerance     1e-18     ! Default: 1e-15 or smaller if double precision, typically 1e-12 to 1e-15
-  -step_size     10.        ! Default: 100.
-  -pe_step_size  5.         ! Default: 10. and should be smaller than step_size
-  -diagonal_scale false     ! Default: false
-  -debug_diffuse_layer false  ! Default: false
-  -debug_inverse false      ! Default: false
-  -debug_model false        ! Default: false
-  -debug_prep false         ! Default: false
-  -debug_set false          ! Default: false
-  -logfile false            ! Default: false
+  -iterations    250        # Default: 100
+  -convergence_tolerance 1e-12  # Default: 1e-8 or 1e-12 when -high_precision true
+  -tolerance     1e-18     # Default: 1e-15 or smaller if double precision, typically 1e-12 to 1e-15
+  -step_size     10.        # Default: 100.
+  -pe_step_size  5.         # Default: 10. and should be smaller than step_size
+  -diagonal_scale true     # Default: false
+  -debug_diffuse_layer false  # Default: false
+  -debug_inverse false      # Default: false
+  -debug_model false        # Default: false
+  -debug_prep false         # Default: false
+  -debug_set false          # Default: false
+  -logfile false            # Default: false
 
 SOLUTION_SPECIES
   H2O + 0.01e- = H2O-0.01
   log_k -9.0
 
 SELECTED_OUTPUT
-  -reset        false  ! Resets all other identifiers
+  -reset        false  # Resets all other identifiers
   -time         true
   -pH           true
   -pe           true
@@ -29,7 +29,7 @@ SELECTED_OUTPUT
               As(+5)
   -molalities MgX2 CaX2 FeX2
   -saturation_indices Goethite Calcite Pyrite
-  -gases CO2(g) N2(g) O2(g)
+  # -gases CO2(g) N2(g) O2(g)
   -kinetic_reactants Pyrite
 USER_PUNCH
   -headings cell 
