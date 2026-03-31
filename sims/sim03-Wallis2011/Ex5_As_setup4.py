@@ -155,6 +155,8 @@ else:
     mf6dll_version = ModflowApi(dll).get_version()
     print(f"User-selected executable ({mf6_exe.exists()}): {mf6_version[1]}, dll: {mf6dll_version}")
 
+# %%
+
 # %% [markdown]
 # ### Reset Workspace & copy files
 
@@ -452,7 +454,7 @@ pd.DataFrame.from_records(perioddata)
 wel = gwf.get_package('wel')
 if wel.has_stress_period_data == True:
     spd_wel_dict = wel.stress_period_data.get_data(full_data=True) # full data is default
-display(spd_wel_dict)
+# spd_wel_dict
 
 # %%
 
@@ -698,6 +700,13 @@ reaction_model.initialize(
 reaction_model.phreeqc_rm.GetThreadCount()
 
 # %%
+# Dictionary of solution concentrations in units of moles per m^3 (or mmol/L), 
+# and structured to match the shape of Modflow's grid
+reaction_model.sconc  # comment out to reduce outputs
+reaction_model.sconc['Charge'][wel_lay,:,wel_cellnum]  # or use it to find value at a single cell
+
+
+# %%
 reaction_model.components
 
 # %%
@@ -728,11 +737,6 @@ ic_df = pd.DataFrame(
 ic_df.index.rename("components", inplace=True)
 ic_df.index = ic_df.index.astype(pd.CategoricalDtype(ordered=True))
 ic_df
-
-# %%
-# Dictionary of concentrations in units of moles per m^3 (or mmol/L), 
-# and structured to match the shape of Modflow's grid
-# reaction_model.sconc  # comment out to reduce outputs
 
 # %% [markdown]
 # ### Initialize BC Chemistry for all Inflows
@@ -894,8 +898,8 @@ spd_welchem_df
 # modify tdis to change timestep length and total simulation time
 change_nstp = True
     # if False, timestep lenght varies by stess period
-nstp_multiplier = 4
-number_of_days_last_stressperiod = 300.
+nstp_multiplier = 8
+number_of_days_last_stressperiod = 200.
 
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
@@ -908,7 +912,14 @@ if change_nstp == True:
 
 # %%
 tdis_spd_df = pd.DataFrame.from_records(tdis.perioddata.get_data())
+# Add step length column
 tdis_spd_df['stp_len'] = tdis_spd_df['perlen'] / tdis_spd_df['nstp']
+# Cumulative Days column
+tdis_spd_df['cumulative_days'] =  tdis_spd_df['perlen'].cumsum()
+# Add flow rates
+tdis_spd_df['q'] = spd_wel_df['q']
+# Calculate cumulative volume 
+tdis_spd_df['cum_q-days'] = (tdis_spd_df['q'] * tdis_spd_df['perlen']).cumsum()
 tdis_spd_df
 
 # %% [markdown]
@@ -966,11 +977,12 @@ reaction_model.run()
 # Add Arsenic!!!
 # - Crashes at sp5-ts36. step_multiplier=12; Knobs: step_size=10, pe_step_size=5, diag_scale=false
 # Reboot
-# - Crashes at sp3-ts40?.step_multiplier=20; Knobs above & tolerance=1e-18
+# - Crashes at sp3-ts40?.nstep_multiplier=20; Knobs above & tolerance=1e-18
 # - Crashes at sp6-ts60. step_multiplier=20; Knobs above & tolerance=1e-17
-
-# %% [markdown]
-#
+# Reboot
+# - 3.5365 mins. No As. 4xnstp. +tolerance=1e-16
+# - Crasshes at sp4-ts12. 4xnstp +tolerance=1e-18
+# - 7.8593 mins. +As+O2. 8xnstp
 
 # %% [markdown]
 # ## Visualize MF6RTM Results from PhreeqcRM
@@ -989,7 +1001,15 @@ column_to_move = sout_df.pop('cell')
 # 2. Insert the column at index 0 (the front)
 sout_df.insert(0, 'cell', column_to_move)
 sout_df.info()
-sout_df
+perlen
+
+# %%
+sout_df.describe()
+
+# %%
+# Get timestamp for plots
+formatted_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+formatted_time
 
 # %% [markdown]
 # ## Holoviz Plots
@@ -1017,13 +1037,20 @@ plot_df = sout_df.loc[sout_df.cell == cell_flatid]
 plot_df.columns
 
 # %%
+arsenic_on = True if 'As(+5)(mol/kgw)' in plot_df.columns else False
+arsenic_on
+
+# %%
 major_elements = ['Ca(mol/kgw)', 'Mg(mol/kgw)', 'Cl(mol/kgw)',
-       'S(6)(mol/kgw)', 'C(4)(mol/kgw)', 'Alk(eq/kgw)', 'charge(eq)']
+       'C(4)(mol/kgw)', 'Alk(eq/kgw)', 
+       'm_MgX2(mol/kgw)', 'm_CaX2(mol/kgw)',]
 majors_plot = plot_df[major_elements].hvplot(ylabel='Majors Conc (mol/kgw)', logy=True)
 
 # %%
-minor_elements = ['S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)', 'Fe(3)(mol/kgw)',
-    # 'As(mol/kgw)',
+minor_elements = ['S(6)(mol/kgw)', 'S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)', 'Fe(3)(mol/kgw)',
+    'm_FeX2(mol/kgw)',
+    'As(+5)(mol/kgw)' if arsenic_on else "",
+    'O(0)(mol/kgw)',
 ]
 minors_plot = plot_df[minor_elements].hvplot(ylabel='Minors Conc (mol/kgw)', logy=True, ylim=(None,None))
 
@@ -1032,13 +1059,11 @@ ph_plot = plot_df[['pH']].hvplot(ylabel='pH')
 pe_plot = plot_df[['pe']].hvplot(ylabel='pe')
 
 # %%
-charge_balance = ['pct_err',]
-charge_plot = plot_df[charge_balance].hvplot.line(ylabel='equivalents (eq/kgw)', logy=False)
-charge_plot
+charge_balance = ['pct_err', ] # 'charge(eq)'
+charge_plot = plot_df[charge_balance].hvplot.line(ylabel='Percent error, 100*(Cat-|An|)/(Cat+|An|)', logy=False)
 
 # %%
 plot_list = [majors_plot, minors_plot, ph_plot, pe_plot, charge_plot]
-formatted_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 chem_layout_plot = hv.Layout(plot_list).cols(1).opts(
     title=f'MF6RTM Results for "{simulation_name}" at cellid {cell_to_plot}, run {formatted_time}',
     shared_axes=False, 
@@ -1067,17 +1092,11 @@ hv.save(chem_layout_plot, plot_path / f'{plot_filename}.html')
 sout_df.to_parquet(plot_path / f'sout_df_{file_time}.parquet', compression='zstd', index=True)
 
 # %%
-sim_ws / f"phreeqc.chem_{file_time}.txt"
-
-# %%
-nstp_multiplier
-
-# %%
-nstp_multiplier = 40
+# nstp_multiplier = 4
 
 # %%
 shutil.copy2(sim_ws / "_phreeqc.chem.txt", plot_path / f"phreeqc.chem_{file_time}.txt")
-shutil.copy2(sim_ws / "phinp.dat", plot_path / f"phinp_{nstp_multiplier}xnstp_{file_time}.dat")
+shutil.copy2(sim_ws / "phinp.dat", plot_path / f"phinp_{file_time}_{nstp_multiplier}xnstp.dat")
 
 # %% [markdown]
 # # END
