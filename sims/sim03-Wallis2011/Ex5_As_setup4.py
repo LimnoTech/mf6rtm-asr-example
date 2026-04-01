@@ -83,12 +83,15 @@ import utils # from this repo
 # to learn about the many benefits over using the `os` library.
 
 # %%
+Lauren = True
 # Find your current working directory, which should be folder for this notebook.
 working_dir = Path.cwd()
 # Find repository path (i.e. the parent to `/examples` directory for this notebook)
 repo_path = working_dir.parent.parent
 repo_path
-
+if Lauren == True:
+    repo_path = Path("C:\\Users\\rdchllkm\\Documents\\GitHub\\mf6rtm-asr-example")
+    working_dir = repo_path / "sims" / "sim03-Wallis2011"
 # %%
 # Simulation based on chemical inputs
 # simulation_name = working_dir.name
@@ -114,8 +117,8 @@ sim_ws.mkdir(parents=True, exist_ok=True)
 
 # %%
 use_version_installed_with_modflowapi = False
-# user = "Laren"
-user = "Anthony"
+user = "Lauren"
+#user = "Anthony"
 os = "macarm"
 
 # version = "6.4.2"
@@ -136,7 +139,7 @@ if use_version_installed_with_modflowapi:
 else:
     if user == "Lauren":
         # If using executable from GMS
-        mf6_bin_path = Path(r"C:/program files/gms 10.8 64-bit/python/lib/site-packages/xms/executables/modflow6")
+        mf6_bin_path = Path(r"C:\\Users\\rdchllkm\\Documents\\Programs\\mf6.8.0.dev0_win64\\bin")
         mf6_exe = mf6_bin_path / "mf6.exe"
         dll = mf6_bin_path / "libmf6.dll"
     elif user == "Anthony":
