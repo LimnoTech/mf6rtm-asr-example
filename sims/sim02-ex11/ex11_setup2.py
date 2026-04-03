@@ -512,6 +512,26 @@ solutions.set_ic(grid_ic_solution_numbers)
 solutions.ic
 
 # %% [markdown]
+# #### Assign SOLUTION Boundary Conditions (BC) to Grid Perimeter
+# Using the Mup3D.ChemStress class to assign Stress Period Data (SPD)
+
+# %%
+# Create a chd chemistry object
+chdchem = mf6rtm.mup3d.ChemStress('chd')
+chd_sol_spd = [1] # use same solution as inital conditions
+# Assign solution block number to stress period data for chd
+chdchem.set_spd(chd_sol_spd)
+chdchem.sol_spd
+
+# %%
+# Create a ghb chemistry object
+ghbchem = mf6rtm.mup3d.ChemStress('ghb')
+ghb_sol_spd = [1] # use same solution as inital conditions
+# Assign solution block number to stress period data for chd
+ghbchem.set_spd(ghb_sol_spd)
+ghbchem.sol_spd
+
+# %% [markdown]
 # #### Assign SOLUTION Boundary Conditions (BC) to all Inflows by Block Number
 # Using the Mup3D.ChemStress class to assign Stress Period Data (SPD)
 
@@ -694,11 +714,13 @@ conc[2]
 # 1.77x faster!
 
 # %% [markdown]
-# ### Initialize BC Chemistry for all Inflows
+# ### Initialize BC Chemistry for all Boundaries
 
 # %%
-# Set and initialize stress period chemical concentrations for each well
+# Set and initialize stress period chemical concentrations for each BC
 reaction_model.set_chem_stress(wellchem)
+reaction_model.set_chem_stress(chdchem)
+reaction_model.set_chem_stress(ghbchem)
 
 # %%
 # Component names
@@ -797,8 +819,12 @@ sim.get_model('trans-Na').ic.strt.array
 # %% [markdown]
 # ## Add Chem Components to Stress Period Data
 
+# %% [markdown]
+# ### WEL Chemistry
+
 # %%
 # We created this dataframe from mf6rtm.mup3d inputs
+# for the well
 bc_df
 
 # %%
@@ -818,7 +844,7 @@ spd = wel.stress_period_data.get_data(full_data=True)
 
 # modify wel spd data
 new_wel_spd = {}
-for kper, records in spd.items():
+for kper, records in spd.items():  
     updated_record = utils.modify_wel_spd(records, component_name_l, wel_conc)
     new_wel_spd[kper] = np.rec.array(updated_record)
 
@@ -843,7 +869,70 @@ spd_welchem_df = pd.concat(spd_welchem_df_dict.values(), keys=spd_welchem_df_dic
 spd_welchem_df = spd_welchem_df.droplevel(level=1)
 spd_welchem_df
 
+# %% [markdown]
+# ### CHD Chemistry
+
 # %%
+############################################################################
+### Add new components to MF6 chd spd and auxvar
+############################################################################
+
+# units of moles per m^3 (or mmol/L), from mf6rtm reaction_model 
+chd_conc = reaction_model.chd.data[0]
+
+# load wel package and stress period data
+chd = gwf.chd
+spd_chd_dict = chd.stress_period_data.get_data(full_data=True) 
+
+# modify chd spd data
+new_chd_spd = {}
+for kper, records in spd_chd_dict.items():
+    updated_record = utils.modify_chd_spd(records, component_name_l, chd_conc)
+    new_chd_spd[kper] = np.rec.array(updated_record)
+
+# set new aux variables
+chd_spd_dtype = list(new_chd_spd[0].dtype.names)
+new_chd_auxvar = chd_spd_dtype[2:-1]  # "2:-1" --> excludes wel parameters from auxvars
+chd.auxiliary = new_chd_auxvar
+
+# set stress period data to new_wel_spd that includes added components
+chd.stress_period_data.set_data(new_chd_spd)
+
+
+# %% [markdown]
+# ### GHB Chemistry
+
+# %%
+############################################################################
+### Add new components to MF6 ghb spd and auxvar
+############################################################################
+
+# units of moles per m^3 (or mmol/L), from mf6rtm reaction_model 
+ghb_conc = reaction_model.ghb.data[0]
+
+# load wel package and stress period data
+ghb = gwf.ghb
+spd_ghb_dict = ghb.stress_period_data.get_data(full_data=True) 
+
+# modify wel spd data
+new_ghb_spd = {}
+for kper, records in spd_ghb_dict.items():
+    updated_record = utils.modify_ghb_spd(records, component_name_l, ghb_conc)
+    new_ghb_spd[kper] = np.rec.array(updated_record)
+
+# set new aux variables
+ghb_spd_dtype = list(new_ghb_spd[0].dtype.names)
+new_ghb_auxvar = ghb_spd_dtype[3:-1]  # "2:-1" --> excludes wel parameters from auxvars
+ghb.auxiliary = new_ghb_auxvar
+
+# set stress period data to new_wel_spd that includes added components
+ghb.stress_period_data.set_data(new_ghb_spd)
+
+# %% [markdown]
+# ## Modify timestep length
+
+# %%
+# Modify number of timesteps per stress period
 # modify tdis
 change_nstp = True
 if change_nstp == True:
@@ -1014,7 +1103,7 @@ for t in t_l:
 # ### Conc Map View
 
 # %%
-s = 3  # solute index for Ca
+s = 4  # solute index for Ca
 t_l = [0, 1, 10, 50, -1]  # list of timestep index (NOT actual time/days)
 for t in t_l:
     fig = plt.figure(figsize=(24, 4))
@@ -1037,9 +1126,6 @@ reaction_model.run()
 #
 # Run times:
 # - 10% faster than grid 1
-
-# %%
-dir(reaction_model)
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
