@@ -63,7 +63,6 @@ def create_mf6_gwt(
     """
 
     gwf = sim.get_model(gwf_name)
-    gwf_disv = gwf.get_package("DISV")
 
     # make output directory for .lst, .cbc, and .unc files
     output_dir_path = sim.sim_path / f"{gwt_name}_output"
@@ -75,25 +74,39 @@ def create_mf6_gwt(
 
     imsgwt = flopy.mf6.ModflowIms(
         sim,
+        pname = f"ims_{gwt_name}", # added pname to avoid duplicate ims package names when multiple gwts are added to the same sim
         print_option="ALL",
         complexity="moderate",
-        linear_acceleration="BICGSTAB",
+        linear_acceleration="BICGSTAB", 
         filename=f"{gwt.name}.ims",
     )
 
     sim.register_ims_package(imsgwt, [gwt.name])
 
-    disvgwt = flopy.mf6.ModflowGwtdisv(
-        gwt,
-        length_units=gwf.disv.length_units.array,
-        nlay=gwf.disv.nlay.array,
-        ncpl=gwf.disv.ncpl.array,
-        nvert=gwf.disv.nvert.array,
-        top=gwf.disv.top.array,
-        botm=gwf.disv.botm.array,
-        vertices=gwf.disv.vertices.array,
-        cell2d=gwf.disv.cell2d.array,
-    )
+    if gwf.modelgrid.grid_type == "structured":
+        dis = flopy.mf6.ModflowGwtdis(
+            gwt,
+            length_units=gwf.dis.length_units.array,
+            nlay=gwf.dis.nlay.array,
+            nrow=gwf.dis.nrow.array,
+            ncol=gwf.dis.ncol.array,
+            delr=gwf.dis.delr.array,
+            delc=gwf.dis.delc.array,
+            top=gwf.dis.top.array,
+            botm=gwf.dis.botm.array,
+        )
+    else:
+        disvgwt = flopy.mf6.ModflowGwtdisv(
+            gwt,
+            length_units=gwf.disv.length_units.array,
+            nlay=gwf.disv.nlay.array,
+            ncpl=gwf.disv.ncpl.array,
+            nvert=gwf.disv.nvert.array,
+            top=gwf.disv.top.array,
+            botm=gwf.disv.botm.array,
+            vertices=gwf.disv.vertices.array,
+            cell2d=gwf.disv.cell2d.array,
+        )
 
     mst = flopy.mf6.ModflowGwtmst(gwt, porosity=porosity, first_order_decay=None)
 
@@ -128,6 +141,7 @@ def create_mf6_gwt(
 
     gwfgwt = flopy.mf6.ModflowGwfgwt(
         sim,
+        pname=f"gwfgwt_{component_name}", # added pname to avoid duplicate gwfgwt package names when multiple gwts are added to the same sim
         exgtype="GWF6-GWT6",
         exgmnamea=gwf.name,
         exgmnameb=gwt.name,
