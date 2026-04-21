@@ -67,6 +67,10 @@ except AttributeError:
     pass
 
 # %%
+#user = "Anthony"
+user = 'Lauren'
+if user == 'Lauren':
+    os.chdir(Path("C:\\Users\\rdchllkm\\Documents\\GitHub\\mf6rtm-asr-example\\src")) # set to working directory for this notebook
 import utils # from this repo
 
 # %% [markdown]
@@ -83,18 +87,16 @@ import utils # from this repo
 # to learn about the many benefits over using the `os` library.
 
 # %%
-# user = "Laren"
-user = "Anthony"
 
-# %%
-# Find your current working directory, which should be folder for this notebook.
-working_dir = Path.cwd()
-# Find repository path (i.e. the parent to `/examples` directory for this notebook)
-repo_path = working_dir.parent.parent
-repo_path
 if user == "Laren":
     repo_path = Path("C:\\Users\\rdchllkm\\Documents\\GitHub\\mf6rtm-asr-example")
     working_dir = repo_path / "sims" / "sim03-Wallis2011"
+else:
+    # Find your current working directory, which should be folder for this notebook.
+    working_dir = Path.cwd()
+    # Find repository path (i.e. the parent to `/examples` directory for this notebook)
+    repo_path = working_dir.parent.parent
+    repo_path
 # %%
 # Simulation based on chemical inputs
 # simulation_name = working_dir.name
@@ -125,38 +127,39 @@ os = "macarm"
 # version = "6.5.0"
 version = "6.7.0"
 
-try:
-    mf6_exe = Path(flopy.which("mf6"))
-    dll = mf6_exe.parent.parent / "lib" / "libmf6.dylib" # MacOS only for now
-    mf6_version = !{mf6_exe} --version
-    mf6dll_version = ModflowApi(dll).get_version()
-    print(f"Executable & library installed with modflowapi: {mf6_version[1]}, dll: {mf6dll_version}")
-except Exception:
-    print("Modflow executables not found in environment")
-
-if use_version_installed_with_modflowapi:
-    print(f"Using executable installed with modflowapi: {mf6_version[1]}")
+if user == "Lauren":
+    # If using executable from GMS
+    mf6_bin_path = Path(r"C:\\Users\\rdchllkm\\Documents\\Programs\\mf6.8.0.dev0_win64\\bin")
+    mf6_exe = mf6_bin_path / "mf6.exe"
+    dll = mf6_bin_path / "libmf6.dll"
 else:
-    if user == "Lauren":
-        # If using executable from GMS
-        mf6_bin_path = Path(r"C:\\Users\\rdchllkm\\Documents\\Programs\\mf6.8.0.dev0_win64\\bin")
-        mf6_exe = mf6_bin_path / "mf6.exe"
-        dll = mf6_bin_path / "libmf6.dll"
-    elif user == "Anthony":
-        mf6_potential_paths = [
-            repo_path / "bin" / f"mf{version}" / os,
-            repo_path / "bin" / f"mf{version}_{os}" / "bin",
-        ]
-        for path in mf6_potential_paths:
-            if path.exists():
-                mf6_bin_path = path
-        mf6_exe = mf6_bin_path / "mf6"
-        dll = mf6_bin_path / "libmf6.dylib"
+    try:
+        mf6_exe = Path(flopy.which("mf6"))
+        dll = mf6_exe.parent.parent / "lib" / "libmf6.dylib" # MacOS only for now
+        mf6_version = !{mf6_exe} --version
+        mf6dll_version = ModflowApi(dll).get_version()
+        print(f"Executable & library installed with modflowapi: {mf6_version[1]}, dll: {mf6dll_version}")
+    except Exception:
+        print("Modflow executables not found in environment")
+
+    if use_version_installed_with_modflowapi:
+        print(f"Using executable installed with modflowapi: {mf6_version[1]}")
     else:
-        print("Create a new user and set paths to mf6 and libmf6")
-    mf6_version = !{mf6_exe} --version
-    mf6dll_version = ModflowApi(dll).get_version()
-    print(f"User-selected executable ({mf6_exe.exists()}): {mf6_version[1]}, dll: {mf6dll_version}")
+        if user == "Anthony":
+            mf6_potential_paths = [
+                repo_path / "bin" / f"mf{version}" / os,
+                repo_path / "bin" / f"mf{version}_{os}" / "bin",
+            ]
+            for path in mf6_potential_paths:
+                if path.exists():
+                    mf6_bin_path = path
+            mf6_exe = mf6_bin_path / "mf6"
+            dll = mf6_bin_path / "libmf6.dylib"
+        else:
+            print("Create a new user and set paths to mf6 and libmf6")
+mf6_version = !{mf6_exe} --version
+mf6dll_version = ModflowApi(dll).get_version()
+print(f"User-selected executable ({mf6_exe.exists()}): {mf6_version[1]}, dll: {mf6dll_version}")
 
 # %% [markdown]
 # ### Reset Workspace & copy files
