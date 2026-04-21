@@ -88,7 +88,7 @@ import utils # from this repo
 
 # %%
 
-if user == "Laren":
+if user == "Lauren":
     repo_path = Path("C:\\Users\\rdchllkm\\Documents\\GitHub\\mf6rtm-asr-example")
     working_dir = repo_path / "sims" / "sim03-Wallis2011"
 else:
@@ -187,8 +187,8 @@ shutil.copy2(dll, sim_ws)
 
 # %%
 # Modflow inputs file folder
-# Grid 2 = 10ft resolution near well (vs 2ft for original)
-mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DISV_inputs2' # Grid 2
+# Uniform 30ft grid cells using DIS package
+mf6_inputs_path = repo_path / 'data' / 'MF6_ASR_DIS_inputs' # DIS Grid
 
 # %%
 # Copy input files to simulation workspace directory)
@@ -298,18 +298,7 @@ gwf.get_package_list()
 
 # %%
 # modify output control package to not print head to .lst file
-oc = gwf.get_package("oc")
-print_record = oc.printrecord.get_data()
-print_rec = print_record[0]
-mask = ~(
-    (print_rec.rtype == "head")
-    & (print_rec.ocsetting == "all")
-    & (print_rec.ocsetting_data == None)
-)
-print_record_new = {}
-print_record_new[0] = print_record[0][mask]
-oc.printrecord.set_data(print_record_new)
-
+# this was removed when I created the original input files with GMS
 # %%
 # modify npf package to save specific discharge
 npf = gwf.get_package("npf")
@@ -329,13 +318,14 @@ for model_name in sim.model_names:
     # Collect grid information
     grid_package = model.get_package(grid_type.name)
     nlay = grid_package.nlay.get_data()  # number of layers
-    ncpl = grid_package.ncpl.get_data()  # number of cells per layer
-    print(f"{model_name}: ", model_type, grid_type.name, grid_units, nlay, ncpl)
+    nrow = grid_package.nrow.get_data()  # number of cells per layer
+    ncol = grid_package.ncol.get_data()  # number of cells per layer
+    print(f"{model_name}: ", model_type, grid_type.name, grid_units, nlay, nrow, ncol)
 
 # %%
 # Use spatial discretization info from the last model
 # Calculate total number of grid cells
-nxyz = nlay * ncpl
+nxyz = nlay * nrow * ncol
 nxyz
 
 # %%
@@ -346,8 +336,8 @@ wel_cellid = wel_spd[0]["cellid"][0]
 display(wel_cellid)
 
 wel_lay = wel_cellid[0]
-wel_cellnum = wel_cellid[1]
-
+wel_row = wel_cellid[1]
+wel_col = wel_cellid[2]
 # %% [markdown]
 # ### Cell Spacing
 
@@ -355,77 +345,11 @@ wel_cellnum = wel_cellid[1]
 grid_package.length_units
 
 # %%
-celldata = grid_package.cell2d.get_data()
-# data stored in numpy record arrays  
-# can be easily converted to pandas dataframes
-cells_df = pd.DataFrame.from_records(celldata, index='icell2d')
-cells_df
+### TODO: Volume calcs need to be redone but aren't used anywhere, skipping for now
+
 
 # %% [markdown]
-# ### Cell Volumes
-
-# %%
-### Calculate grid cell volume
-cell2D = grid_package.cell2d.get_data()
-cell2D_df = pd.DataFrame.from_records(cell2D, index='icell2d')
-vertices = grid_package.vertices.get_data()
-vertices_df = pd.DataFrame.from_records(vertices, index='iv')
-top = grid_package.top.array
-botm = grid_package.botm.array
-
-### Calculate surface area of each grid cell within a single layer
-for cell in range(len(cell2D_df)):
-    ### get vertice coordinates to calc surface area
-    temp_cell_info = cell2D_df.iloc[[cell]]
-    # read each vert_1 - 5
-    icverts = temp_cell_info.filter(like="icvert_").iloc[0].to_list()
-    # remove Nones
-    icverts_clean = [int(v) for v in icverts if v is not None]
-    # look up (x,y) and create x and y arrays
-    x_l = vertices_df.loc[icverts_clean,"xv"].to_numpy()
-    y_l = vertices_df.loc[icverts_clean,"yv"].to_numpy()
-    # calculate surface area based on min/max x/y from array
-    surface_area = (np.max(x_l)-np.min(x_l)) * (np.max(y_l) - np.min(y_l))
-    cell2D_df.loc[cell,'surface_area'] = surface_area
-
-### Calc layer thickness for each layer
-# initialize thickness array
-thickness = np.zeros_like(botm)
-# for layer 1:
-thickness[0] = top - botm[0]
-# for layers 2:nlay
-thickness[1:] = botm[:-1] - botm[1:]
-
-### Calculate volume for each grid cell
-# initialize volume array
-cell_volumes = np.zeros((nlay,ncpl))
-# calculate volume for entire grid
-for k in range(nlay):
-    cell_volumes[k,:] = cell2D_df['surface_area'].to_numpy() * thickness[k,:]
-
-# %%
-cell2D_df
-
-# %%
-# volume of cells near well screen
-cell_volumes[2, wel_cellnum-6:wel_cellnum+6]
-
-# %%
-# TODO: Get flat Cell Index to (cellid_layer, cellid_cell) mapping
-# for exploring phreeqcrm outputs
-
-# %%
-cell_flat_index = np.array(range(nlay*ncpl))
-cell_flat_index
-
-# %%
-cellid_flatmap = np.reshape(cell_flat_index, (nlay,ncpl))
-cellid_flatmap
-
-# %%
-cellid_layer = wel_lay
-cellid_cell = wel_cellnum
-cellid_flatmap[cellid_layer, cellid_cell]
+# ### Cell Volumes NOTE: Removed this section for now, needs to be redone
 
 # %% [markdown]
 # ## Read Time Info
@@ -475,6 +399,9 @@ spd_wel_df = spd_wel_df.droplevel(level=1)
 spd_wel_df.info()
 spd_wel_df
 
+# NOTE: wel discharge cut in half from original NAP simulation. 
+# NOTE: Injection/pumping rate = 334179.708
+
 # %% [markdown]
 # NOTE: `cellid` is a cell identifier tuple, and depends on the type of grid that is used for the simulation. 
 # - For a structured grid that uses the DIS input file, CELLID is the layer, row, and column. 
@@ -519,6 +446,9 @@ solutions.names
 
 # %%
 # mup3d currently requires a grid array with 3 dimensions
+# NOTE: newest version of mf6rtm allows nlay and ncpl for DISV instead of nlay,nrow,ncol
+# TODO: check on this ^
+
 """ conc[0].shape = 
         (240, 2, 1, 80)
         ^     ^  ^  ^
@@ -526,16 +456,14 @@ solutions.names
         |     |  dummy row dimension (always 1 for DISV)
         |     number of layers (nlay = 2)
         number of time steps (240)"""
-# So assign dummy dimensions
-nrow = 1
-ncol = ncpl # should equal ncpl, but simplifying for now
+
 
 # %%
 # Assign solution block numbers to each in grid
 # NOTE: at this stage of creating modflow transport models (gwt), we only want one cell per block
 
 # start by assigning solution block 1 to all cells
-grid_ic_solution_numbers = np.ones((nlay, 1, ncpl), dtype=int)
+grid_ic_solution_numbers = np.ones((nlay, nrow, ncol), dtype=int)
 
 # Modify block assignments over grid, as needed
 
@@ -614,7 +542,7 @@ exchanger.set_equilibrate_solutions([1])
 # Assign block numbers to each cell
 # NOTE: at this stage of creating modflow transport models (gwt), we only want one cell per block
 # start by assigning exchange block 0 to all cells
-grid_ic_exchange_numbers = np.ones((nlay, 1, ncpl), dtype=int)
+grid_ic_exchange_numbers = np.ones((nlay, nrow, ncol), dtype=int)
 
 exchanger.set_ic(grid_ic_exchange_numbers)
 exchanger.ic
@@ -718,20 +646,21 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # NOTE: It appears that nthreads cannot be increased above 1 if using the Python phreeqcrm package
 # See https://github.com/p-ortega/mf6rtm/issues/54
 
-reaction_model.initialize(
+if user == 'Lauren':
+    reaction_model.initialize()
+else:
+    reaction_model.initialize(
     nthreads=4, 
     add_charge_flag=True,
-)
-# NOTE: If this hangs, check all input files for "!" 
-
-# %%
-reaction_model.phreeqc_rm.GetThreadCount()
+    )
+    reaction_model.phreeqc_rm.GetThreadCount()
+    # NOTE: If this hangs, check all input files for "!" 
 
 # %%
 # Dictionary of solution concentrations in units of moles per m^3 (or mmol/L), 
 # and structured to match the shape of Modflow's grid
 reaction_model.sconc  # comment out to reduce outputs
-reaction_model.sconc['Charge'][wel_lay,:,wel_cellnum]  # or use it to find value at a single cell
+reaction_model.sconc['Charge'][wel_lay,wel_row,wel_col]  # or use it to find value at a single cell
 
 
 # %%
@@ -989,8 +918,11 @@ ghb.stress_period_data.set_data(new_ghb_spd)
 # %%
 # Modify number of timesteps per stress period
 # modify tdis to change timestep length and total simulation time
-change_nstp = True
-    # if False, timestep lenght varies by stess period
+# NOTE: original DIS sim has smaller timestep size for when pumping rate changes
+dts = sim.tdis.perioddata.get_data()['perlen'] / sim.tdis.perioddata.get_data()['nstp']
+print(f'original timestep length (days) for each stress period: {dts}') 
+change_nstp = False
+    # if False, timestep lenght varies by stess period --> NOTE: not true?
 nstp_multiplier = 2
 number_of_days_last_stressperiod = 200.
 
@@ -1002,6 +934,7 @@ if change_nstp == True:
     tdis_spd['nstp'][-1] = int(number_of_days_last_stressperiod * nstp_multiplier / 20)
                     # dividing by 20 gives about double the length of other periods
     sim.get_package("tdis").perioddata.set_data(tdis_spd)
+
 
 # %%
 tdis_spd_df = pd.DataFrame.from_records(tdis.perioddata.get_data())
@@ -1020,6 +953,7 @@ tdis_spd_df
 
 # %%
 # Remove transport models for testing
+# NOTE: we should prob stop removing these bc we will need them for the regional model
 sim.remove_model('trans-tds')
 sim.remove_model('trans-temp')
 
