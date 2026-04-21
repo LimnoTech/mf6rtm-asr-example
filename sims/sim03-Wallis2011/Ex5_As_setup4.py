@@ -83,13 +83,16 @@ import utils # from this repo
 # to learn about the many benefits over using the `os` library.
 
 # %%
-Lauren = True
+# user = "Laren"
+user = "Anthony"
+
+# %%
 # Find your current working directory, which should be folder for this notebook.
 working_dir = Path.cwd()
 # Find repository path (i.e. the parent to `/examples` directory for this notebook)
 repo_path = working_dir.parent.parent
 repo_path
-if Lauren == True:
+if user == "Laren":
     repo_path = Path("C:\\Users\\rdchllkm\\Documents\\GitHub\\mf6rtm-asr-example")
     working_dir = repo_path / "sims" / "sim03-Wallis2011"
 # %%
@@ -117,10 +120,7 @@ sim_ws.mkdir(parents=True, exist_ok=True)
 
 # %%
 use_version_installed_with_modflowapi = False
-user = "Lauren"
-#user = "Anthony"
 os = "macarm"
-
 # version = "6.4.2"
 # version = "6.5.0"
 version = "6.7.0"
@@ -157,8 +157,6 @@ else:
     mf6_version = !{mf6_exe} --version
     mf6dll_version = ModflowApi(dll).get_version()
     print(f"User-selected executable ({mf6_exe.exists()}): {mf6_version[1]}, dll: {mf6dll_version}")
-
-# %%
 
 # %% [markdown]
 # ### Reset Workspace & copy files
@@ -543,6 +541,26 @@ solutions.set_ic(grid_ic_solution_numbers)
 solutions.ic
 
 # %% [markdown]
+# #### Assign SOLUTION Boundary Conditions (BC) to Grid Perimeter
+# Using the Mup3D.ChemStress class to assign Stress Period Data (SPD)
+
+# %%
+# Create a chd chemistry object
+chdchem = mf6rtm.mup3d.ChemStress('chd')
+chd_sol_spd = [1] # use same solution as inital conditions
+# Assign solution block number to stress period data for chd
+chdchem.set_spd(chd_sol_spd)
+chdchem.sol_spd
+
+# %%
+# Create a ghb chemistry object
+ghbchem = mf6rtm.mup3d.ChemStress('ghb')
+ghb_sol_spd = [1] # use same solution as inital conditions
+# Assign solution block number to stress period data for chd
+ghbchem.set_spd(ghb_sol_spd)
+ghbchem.sol_spd
+
+# %% [markdown]
 # #### Assign SOLUTION Boundary Conditions (BC) to all Inflows by Block Number
 # Using the Mup3D.ChemStress class to assign Stress Period Data (SPD)
 
@@ -664,7 +682,7 @@ reaction_model.set_initial_temp([7., 7., 7.])
 
 # set chemistry domain initilization to model object
 reaction_model.set_exchange_phases(exchanger)
-reaction_model.set_phases(equilibrium_phases)
+# reaction_model.set_phases(equilibrium_phases)
 # reaction_model.set_phases(surfaces)
 # reaction_model.set_phases(kinetic_phases)
 
@@ -747,11 +765,13 @@ ic_df.index = ic_df.index.astype(pd.CategoricalDtype(ordered=True))
 ic_df
 
 # %% [markdown]
-# ### Initialize BC Chemistry for all Inflows
+# ### Initialize BC Chemistry for all Boundaries
 
 # %%
-# Set and initialize stress period chemical concentrations for each well
+# Set and initialize stress period chemical concentrations for each BC
 reaction_model.set_chem_stress(wellchem)
+reaction_model.set_chem_stress(chdchem)
+reaction_model.set_chem_stress(ghbchem)
 
 # %%
 # Component names
@@ -853,6 +873,9 @@ sim.get_model('trans-Ca').ic.strt.array
 # %% [markdown]
 # ## Add Chem Components to Stress Period Data
 
+# %% [markdown]
+# ### WEL Chemistry
+
 # %%
 # We created this dataframe from mf6rtm.mup3d inputs
 bc_df
@@ -900,9 +923,69 @@ spd_welchem_df = spd_welchem_df.droplevel(level=1)
 spd_welchem_df
 
 # %% [markdown]
+# ### CHD Chemistry
+
+# %%
+############################################################################
+### Add new components to MF6 chd spd and auxvar
+############################################################################
+
+# units of moles per m^3 (or mmol/L), from mf6rtm reaction_model 
+chd_conc = reaction_model.chd.data[0]
+
+# load wel package and stress period data
+chd = gwf.chd
+spd_chd_dict = chd.stress_period_data.get_data(full_data=True) 
+
+# modify chd spd data
+new_chd_spd = {}
+for kper, records in spd_chd_dict.items():
+    updated_record = utils.modify_chd_spd(records, component_name_l, chd_conc)
+    new_chd_spd[kper] = np.rec.array(updated_record)
+
+# set new aux variables
+chd_spd_dtype = list(new_chd_spd[0].dtype.names)
+new_chd_auxvar = chd_spd_dtype[2:-1]  # "2:-1" --> excludes wel parameters from auxvars
+chd.auxiliary = new_chd_auxvar
+
+# set stress period data to new_wel_spd that includes added components
+chd.stress_period_data.set_data(new_chd_spd)
+
+
+# %% [markdown]
+# ### GHB Chemistry
+
+# %%
+############################################################################
+### Add new components to MF6 ghb spd and auxvar
+############################################################################
+
+# units of moles per m^3 (or mmol/L), from mf6rtm reaction_model 
+ghb_conc = reaction_model.ghb.data[0]
+
+# load wel package and stress period data
+ghb = gwf.ghb
+spd_ghb_dict = ghb.stress_period_data.get_data(full_data=True) 
+
+# modify wel spd data
+new_ghb_spd = {}
+for kper, records in spd_ghb_dict.items():
+    updated_record = utils.modify_ghb_spd(records, component_name_l, ghb_conc)
+    new_ghb_spd[kper] = np.rec.array(updated_record)
+
+# set new aux variables
+ghb_spd_dtype = list(new_ghb_spd[0].dtype.names)
+new_ghb_auxvar = ghb_spd_dtype[3:-1]  # "2:-1" --> excludes wel parameters from auxvars
+ghb.auxiliary = new_ghb_auxvar
+
+# set stress period data to new_wel_spd that includes added components
+ghb.stress_period_data.set_data(new_ghb_spd)
+
+# %% [markdown]
 # ## Modify timestep length
 
 # %%
+# Modify number of timesteps per stress period
 # modify tdis to change timestep length and total simulation time
 change_nstp = True
     # if False, timestep lenght varies by stess period
@@ -930,8 +1013,6 @@ tdis_spd_df['q'] = spd_wel_df['q']
 tdis_spd_df['cum_q-days'] = (tdis_spd_df['q'] * tdis_spd_df['perlen']).cumsum()
 tdis_spd_df
 
-# %%
-
 # %% [markdown]
 # ## Remove transport models that are not needed
 
@@ -956,7 +1037,7 @@ sim.write_simulation()
 # To confirm that conservative transport is occuring as expected.
 
 # %%
-# utils.run_models(sim, silent=False)
+utils.run_models(sim, silent=False)
 
 # %% [markdown]
 # ## Plot MF6 Transport Results with no Reactions
@@ -989,6 +1070,10 @@ reaction_model.run()
 # - Crashes sp4-ts12. 4xnstp +tolerance=1e-18
 # - 7.8593 mins. +O2. 8xnstp
 # - Crashes sp2-ts16. 8xnstp +O2 +As
+# - 6.45 mins. 8xnstp. +As -eqphase -surface= -kinetics
+
+# %%
+nstp_multiplier
 
 # %% [markdown]
 # ## Visualize MF6RTM Results from PhreeqcRM
@@ -1027,11 +1112,11 @@ import holoviews as hv
 # %%
 # wel_cellid
 wel_cellid = (2, 462)
-wel_cellid = (1, 941) # biggest residual on gwf from mfsim.lst
+# wel_cellid = (1, 941) # biggest residual on gwf from mfsim.lst
 
 # %%
 # Plot one cell away from well
-cell_to_plot = (wel_cellid[0], wel_cellid[1])
+cell_to_plot = (wel_cellid[0], wel_cellid[1]+1)
 cell_to_plot
 
 # %%
@@ -1102,7 +1187,7 @@ hv.save(chem_layout_plot, plot_path / f'{plot_filename}.html')
 sout_df.to_parquet(plot_path / f'sout_df_{file_time}.parquet', compression='zstd', index=True)
 
 # %%
-# nstp_multiplier = 4
+nstp_multiplier = 8
 
 # %%
 shutil.copy2(sim_ws / "_phreeqc.chem.txt", plot_path / f"phreeqc.chem_{file_time}.txt")

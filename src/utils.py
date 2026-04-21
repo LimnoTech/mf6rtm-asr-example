@@ -111,9 +111,9 @@ def create_mf6_gwt(
 
     # modify wel, chd, and ghb aux variables
 
-    sourcerecarray = [(gwf.wel.package_name, "AUX", component_name)]  # ,
-    # (gwf.chd.package_name, "AUX", "trans-"+component_name),
-    # (gwf.ghb.package_name, "AUX", "trans-"+component_name)]
+    sourcerecarray = [(gwf.wel.package_name, "AUX", component_name),
+     (gwf.chd.package_name, "AUX", component_name),
+     (gwf.ghb.package_name, "AUX", component_name)]
     ssm = flopy.mf6.ModflowGwtssm(gwt, sources=sourcerecarray)
 
     budget_file_path = sim.sim_path/ f"{gwt_name}_output" /f"{gwt_name}.cbc"
@@ -222,6 +222,87 @@ def modify_wel_spd(
 
     return record_final
 
+def modify_chd_spd(
+    record: np.recarray,
+    component_name_l: list,
+    chd_conc: list,
+):
+    # get boundname and save for later
+    boundname = list(record["boundname"])
+    # remove tds, temp and boundname using rfn.drop_fields
+    record_trimmed = rfn.drop_fields(record, ["boundname"])  #'tds','temp'
+
+    # add chd conc data
+    # numpy.lib.recfunctions.append_fields(base, names, data, dtypes=None, fill_value=-1, usemask=True, asrecarray=False)
+    # base       = original recarray you want to add fields to
+    # names      = string for one filed or list of strings for new field name(s)
+    # data       = 1D list/array of values for the new field(s). For multiple
+    #              fields use a list of arrays, where len(array) = len(base)
+    # dtypes     = dtype (string or dtype obj) or list of dtypes for names
+    # fill_value = used to fill missing values default = -1
+    # usemask    = False --> returns a regular structured array
+    # asrecarray = True --> output as np.recarray, False --> np.array
+    chd_conc_dtype = list(np.full(len(chd_conc), "<f8"))
+    n = len(record_trimmed)
+    chd_conc_arrays = [np.full(n, val, dtype=np.float64) for val in chd_conc] 
+    record_addconc = rfn.append_fields(
+        record_trimmed,
+        component_name_l,
+        chd_conc_arrays, # NOTE: must be array here with one entry for each records
+        dtypes=chd_conc_dtype,
+        usemask=False,
+        asrecarray=True,
+    )
+
+    # create new recarray and add boundname at the end
+    new_dtype = record_addconc.dtype.descr + [("boundname", "O")]
+    record_final = np.empty(record_addconc.shape, dtype=new_dtype)
+    for name in record_addconc.dtype.names:
+        record_final[name] = record_addconc[name]
+    record_final["boundname"] = boundname
+
+    return record_final
+
+def modify_ghb_spd(
+    record: np.recarray,
+    component_name_l: list,
+    ghb_conc: list,
+):
+    # get boundname and save for later
+    boundname = list(record["boundname"])
+    # remove tds, temp and boundname using rfn.drop_fields
+    record_trimmed = rfn.drop_fields(record, ["boundname"])  #'tds','temp'
+
+    # add chd conc data
+    # numpy.lib.recfunctions.append_fields(base, names, data, dtypes=None, fill_value=-1, usemask=True, asrecarray=False)
+    # base       = original recarray you want to add fields to
+    # names      = string for one filed or list of strings for new field name(s)
+    # data       = 1D list/array of values for the new field(s). For multiple
+    #              fields use a list of arrays, where len(array) = len(base)
+    # dtypes     = dtype (string or dtype obj) or list of dtypes for names
+    # fill_value = used to fill missing values default = -1
+    # usemask    = False --> returns a regular structured array
+    # asrecarray = True --> output as np.recarray, False --> np.array
+    ghb_conc_dtype = list(np.full(len(ghb_conc), "<f8"))
+    n = len(record_trimmed)
+    ghb_conc_arrays = [np.full(n, val, dtype=np.float64) for val in ghb_conc] 
+    record_addconc = rfn.append_fields(
+        record_trimmed,
+        component_name_l,
+        ghb_conc_arrays, # NOTE: must be array here with one entry for each records
+        dtypes=ghb_conc_dtype,
+        usemask=False,
+        asrecarray=True,
+    )
+
+    # create new recarray and add boundname at the end
+    new_dtype = record_addconc.dtype.descr + [("boundname", "O")]
+    record_final = np.empty(record_addconc.shape, dtype=new_dtype)
+    for name in record_addconc.dtype.names:
+        record_final[name] = record_addconc[name]
+    record_final["boundname"] = boundname
+
+    return record_final
 
 def calc_Cr(sim, gwf, gwt, layer):
     ''' Calculates the Courant number in the x, y and z directions at each
@@ -341,6 +422,86 @@ def plot_Cr_map_view(gwf,t_l,layer,Cr_type,Cr_data,vmin,vmax,f=101,extent=None):
         ax.set_title(f"{Cr_type} at timestep index t=" + str(t))
         mapview = flopy.plot.PlotMapView(gwf, layer=layer, extent=extent)
         patch_collection = mapview.plot_array(Cr_data[t,:,:],vmin=vmin, vmax=vmax)
+        linecollection = mapview.plot_grid()
+        cb = plt.colorbar(patch_collection, shrink=0.75)
+        plt.show()
+        f = f + 1
+    return 
+
+def plot_cross_section(gwf,conc,times_c,layer,f,plot_bcs,line,c,vmin_l,vmax_l,t_l,component_name_l,extent=None,gwt_ic_conc_l=None):
+    # plot a cross section along the line specified for each timestep in t_l
+    # gwf      = flopy gwf model object
+    # conc     = list of np.arrays of conc for each component with arrray shape [ntimes, nlay, 1, ncpl]
+    # layer    = model layer to plot cross section for (0-based index) 
+    # f        = starting figure number
+    # plot_bcs = True/False for whether to plot BCs on map view showing
+    # line     = array of x and y coordinates for start and end of line to plot cross section along
+    # c        = index of component to plot xsection from component_name_l
+    # vmin_l   = list of vmin for each component to use for plotting cross section
+    # vmax_l   = list of vmax for each component to use for plotting cross section
+    # t_l      = list of timestep index (actual time/days) to plot cross section for
+    #          = NOTE: if t_l = "ic" then it will plot the initial conditions for the component instead of timesteps
+    # extent   = PlotMapView extent option: (xmin, xmax, ymin, ymax)
+
+    # create cross section line to plot cross section along
+    # to plot a cross section with disv, you have to make a line to plot along
+    # creates a plot showing where the line is on the grid to make the cross section plot
+# create cross section line to plot cross section along
+# to plot a cross section with disv, you have to make a line to plot along
+# creates a plot showing where the line is on the grid to make the cross section plot
+    fig = plt.figure(num=f,figsize=(6, 4))
+    ax = fig.add_subplot(1, 1, 1, aspect="auto")
+    ax.set_title("Vertex Model Grid (DISV) with cross sectional line")
+    # use PlotMapView to plot a DISV (vertex) model
+    mapview = flopy.plot.PlotMapView(gwf, layer=layer,extent=extent)
+    if plot_bcs == True:
+        mapview.plot_bc("WEL-1")
+        mapview.plot_bc("CHD-1")
+    linecollection = mapview.plot_grid()
+    # plot the line over the model grid
+    lc = plt.plot(line.T[0], line.T[1], "r--", lw=0.8)
+    plt.show()
+    f = f + 1
+
+    # creates a cross section along the line specified above for each timestep in t_l
+    # list of timestep index (NOT actual time/days)
+    if t_l == "ic":
+        fig = plt.figure(num=f,figsize=(6, 4))
+        xsect = flopy.plot.PlotCrossSection(model=gwf, line={"line": line})
+        patch_collection = xsect.plot_array(gwt_ic_conc_l[c], vmin=vmin_l[c], vmax=vmax_l[c])
+        line_collection = xsect.plot_grid()
+        cb = plt.colorbar(patch_collection, shrink=0.75)
+        title = "Initial Conditions: " + component_name_l[c]
+        plt.title(title)
+        plt.show()
+        f = f + 1
+    else:
+        for t in t_l:
+            fig = plt.figure(num=f,figsize=(6, 4))
+            xsect = flopy.plot.PlotCrossSection(model=gwf, line={"line": line})
+            patch_collection = xsect.plot_array(conc[c][t, :, :, :], vmin=vmin_l[c], vmax=vmax_l[c])
+            line_collection = xsect.plot_grid()
+            cb = plt.colorbar(patch_collection, shrink=0.75)
+            title = "Timestep: t=" + str(t) + ', '+ str(times_c[c][t]) + " days for " + component_name_l[c]
+            plt.title(title)    
+            plt.show()
+            f = f + 1
+
+def plot_conc_map_view(gwf,component_name,t_l,layer,conc,vmin,vmax,f,extent=None):
+    # plot Courant number in map view using FloPy PlotMapView
+    # gwf     = flopy gwf model object
+    # t_l     = list of timestep index (NOT actual time/days)
+    # layer   = model layer to plot map view
+    # f       = starting figure number
+    # extent  = PlotMapView extent option: (xmin, xmax, ymin, ymax)
+    # conc    = array of concentration with shape [ntimes, nlay, 1, ncpl]
+
+    for t in t_l:
+        fig = plt.figure(num=f,figsize=(6, 4))
+        ax = fig.add_subplot(1, 1, 1, aspect="auto")
+        ax.set_title(f"{component_name} at timestep index t=" + str(t))
+        mapview = flopy.plot.PlotMapView(gwf, layer=layer, extent=extent)
+        patch_collection = mapview.plot_array(conc[t,:,:,:],vmin=vmin, vmax=vmax)
         linecollection = mapview.plot_grid()
         cb = plt.colorbar(patch_collection, shrink=0.75)
         plt.show()
