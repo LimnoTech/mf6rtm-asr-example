@@ -952,6 +952,11 @@ chd.auxiliary = new_chd_auxvar
 chd.stress_period_data.set_data(new_chd_spd)
 
 
+# %%
+# Confirm values are set as expected
+display(ic_df.T)
+chd.stress_period_data.get_dataframe()[0].loc[0:1]
+
 # %% [markdown]
 # ### GHB Chemistry
 
@@ -980,6 +985,11 @@ ghb.auxiliary = new_ghb_auxvar
 
 # set stress period data to new_wel_spd that includes added components
 ghb.stress_period_data.set_data(new_ghb_spd)
+
+# %%
+# Confirm values are set as expected
+display(ic_df.T)
+ghb.stress_period_data.get_dataframe()[0].loc[0:1]
 
 # %% [markdown]
 # ## Modify timestep length

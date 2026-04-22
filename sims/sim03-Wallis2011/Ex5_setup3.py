@@ -988,7 +988,7 @@ ghb.stress_period_data.set_data(new_ghb_spd)
 # modify tdis to change timestep length and total simulation time
 change_nstp = True
     # if False, timestep lenght varies by stess period
-nstp_multiplier = 2
+nstp_multiplier = 8
 number_of_days_last_stressperiod = 200.
 
 if change_nstp == True:
@@ -1112,6 +1112,8 @@ import hvplot.pandas
 import holoviews as hv
 
 # %%
+# wel_cellid = (2, 462)
+# wel_cellid = (1, 941) # biggest residual on gwf from mfsim.lst
 wel_cellid
 
 # %%
@@ -1121,6 +1123,7 @@ cell_to_plot
 
 # %%
 cell_flatid = cellid_flatmap[*cell_to_plot]
+# cell_flatid = 2376
 cell_flatid
 
 # %%
@@ -1128,20 +1131,20 @@ plot_df = sout_df.loc[sout_df.cell == cell_flatid]
 plot_df.columns
 
 # %%
-# Create list of components to plot based on intersection with transported components
-components_to_plot = [f'{c}' for c in component_name_l if c in ['Ca', 'Cl', 'K', 'N', 'Na',]]
-components_to_plot.append('S(6)')
-components_to_plot
-
-# %%
 major_elements = ['Ca(mol/kgw)', 'Mg(mol/kgw)', 'Cl(mol/kgw)',
-       'S(6)(mol/kgw)', 'C(4)(mol/kgw)',]
-majors_plot = plot_df[major_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=True)
+       'C(4)(mol/kgw)', 'Alk(eq/kgw)', 
+       'm_MgX2(mol/kgw)', 'm_CaX2(mol/kgw)',]
+majors_plot = plot_df[major_elements].hvplot(ylabel='Majors Conc (mol/kgw)', logy=True)
 
 # %%
-minor_elements = ['S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)',
-       'Fe(3)(mol/kgw)',]
-minors_plot = plot_df[minor_elements].hvplot(ylabel='Concentrations (mol/kgw)', logy=True)
+minor_elements = ['S(6)(mol/kgw)', 'S(-2)(mol/kgw)', 'Fe(2)(mol/kgw)', 'Fe(3)(mol/kgw)',
+    'm_FeX2(mol/kgw)',
+    'O(0)(mol/kgw)',
+]
+minors_plot = plot_df[minor_elements].hvplot(
+    ylabel='Minors Conc (mol/kgw)', 
+    logy=True, ylim=(1e-24,5e-5)
+)
 
 # %%
 ph_plot = plot_df[['pH']].hvplot(ylabel='pH')

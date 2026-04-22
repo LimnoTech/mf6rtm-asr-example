@@ -33,9 +33,6 @@
 # - If using VS Code, install the the [Jupytext Sync extension](https://jupytext.readthedocs.io/en/latest/vs-code.html) for maximum benefit.
 
 # %% [markdown]
-#
-
-# %% [markdown]
 # # Installation and Setup
 #
 # Create a custom conda virtual environment can be created using the `environment.yml` file included in this repo. 
@@ -49,6 +46,7 @@
 import os
 import shutil
 from pathlib import Path
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -86,12 +84,18 @@ import utils # from this repo
 # to learn about the many benefits over using the `os` library.
 
 # %%
+# user = "Laren"
+user = "Anthony"
+
+# %%
 # Find your current working directory, which should be folder for this notebook.
 working_dir = Path.cwd()
 # Find repository path (i.e. the parent to `/examples` directory for this notebook)
 repo_path = working_dir.parent.parent
 repo_path
-
+if user == "Laren":
+    repo_path = Path("C:\\Users\\rdchllkm\\Documents\\GitHub\\mf6rtm-asr-example")
+    working_dir = repo_path / "sims" / "sim02-ex11"
 # %%
 simulation_name = working_dir.name
 simulation_name
@@ -326,6 +330,7 @@ nxyz
 
 # %%
 # lookup cell ID of wel package cell
+# NOTE: indices from flopy use Python indexing from 0
 wel_spd = gwf.wel.stress_period_data.array
 wel_cellid = wel_spd[0]["cellid"][0]
 display(wel_cellid)
@@ -639,8 +644,24 @@ reaction_model.set_componenth2o(True) # True = transport H20 and excess H & O
 # %%
 # Intializing the mup3d class calculates the equilibrated
 # initial concentration array
+# NOTE: It appears that nthreads cannot be increased above 1 if using the Python phreeqcrm package
+# See https://github.com/p-ortega/mf6rtm/issues/54
 
-reaction_model.initialize(add_charge_flag=True)
+reaction_model.initialize(
+    nthreads=4, 
+    add_charge_flag=True,
+)
+# NOTE: If this hangs, check all input files for "!" 
+
+# %%
+reaction_model.phreeqc_rm.GetThreadCount()
+
+# %%
+# Dictionary of solution concentrations in units of moles per m^3 (or mmol/L), 
+# and structured to match the shape of Modflow's grid
+reaction_model.sconc  # comment out to reduce outputs
+reaction_model.sconc['Charge'][wel_lay,:,wel_cellnum]  # or use it to find value at a single cell
+
 
 # %%
 reaction_model.components
@@ -933,21 +954,35 @@ ghb.stress_period_data.set_data(new_ghb_spd)
 
 # %%
 # Modify number of timesteps per stress period
-# modify tdis
+# modify tdis to change timestep length and total simulation time
 change_nstp = True
+    # if False, timestep lenght varies by stess period
+nstp_multiplier = 2
+number_of_days_last_stressperiod = 200.
+
 if change_nstp == True:
     tdis_spd = sim.get_package("tdis").perioddata.get_data(full_data=True)
-    #tdis_spd = tdis_spd[0:5]
-    #tdis_spd["nstp"] = tdis_spd["perlen"]   # each timestep = 1 day
-    #tdis_spd["nstp"] = tdis_spd["perlen"]  # set number of steps (nstp) equal to stress period length (perlen) so dt = 1 day for each stress period
-    #for t in range(len(tdis_spd)):
-    #    tdis_spd['nstp'][t] = 1
-    #    tdis_spd['perlen'][t] = 1.
-    #tdis_spd['nstp'][0] = 20 # set first stress period to 20 days with 1 timestep per day
-    # tdis_spd['perlen'][0] = 20
-    tdis_spd['perlen'][-1] = 600.
-    tdis_spd['nstp'][-1] = 60
+    tdis_spd["nstp"] = tdis_spd["nstp"] * nstp_multiplier
+    # Modify length of last stress period
+    tdis_spd['perlen'][-1] = number_of_days_last_stressperiod
+    tdis_spd['nstp'][-1] = int(number_of_days_last_stressperiod * nstp_multiplier / 20)
+                    # dividing by 20 gives about double the length of other periods
     sim.get_package("tdis").perioddata.set_data(tdis_spd)
+
+# %%
+tdis_spd_df = pd.DataFrame.from_records(tdis.perioddata.get_data())
+# Add step length column
+tdis_spd_df['stp_len'] = tdis_spd_df['perlen'] / tdis_spd_df['nstp']
+# Cumulative Days column
+tdis_spd_df['cumulative_days'] =  tdis_spd_df['perlen'].cumsum()
+# Add flow rates
+tdis_spd_df['q'] = spd_wel_df['q']
+# Calculate cumulative volume 
+tdis_spd_df['cum_q-days'] = (tdis_spd_df['q'] * tdis_spd_df['perlen']).cumsum()
+tdis_spd_df
+
+# %% [markdown]
+# ## Remove transport models that are not needed
 
 # %%
 # Remove transport models for testing
@@ -1129,6 +1164,8 @@ reaction_model.run()
 
 # %% [markdown]
 # ## Visualize MF6RTM Results
+#
+# Compare sim with and without reactions
 
 # %%
 # read in mf6 conc results
