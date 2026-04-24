@@ -18,7 +18,14 @@
 # %% [markdown]
 # # ASR Simulation 3: Grid 2 (10ft near well) with Chemistry from MF6RTM Example 5 (Appelo 1998) 
 #
-# This simulation adds **arsenic redox chemistry** -- from Wallis et al 2011 -- to the 3D transport models of the simple ASR test case.
+# This simulation adds **additional geochemical processes** -- using [MF6RTM Example 5](https://github.com/p-ortega/mf6rtm/blob/main/benchmark/ex5.ipynb) (Appelo 1998) inputs -- to the 3D transport models of the simple ASR test case.
+#
+# MF6RTM Example 5 includes these geochemical processes:
+# - Solutions (required aqueous chemistry)
+# - Exchanges
+# - Equilibrium Phases (mineral precipitation/dissolution reaction equilibria)
+# - Kinetics (mineral precipitation/dissolution rates)
+# - Surfaces (adsorption/desorption onto minerals defined above)
 #
 # For information and exploration of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`.
 #
@@ -683,7 +690,7 @@ reaction_model.set_initial_temp([7., 7., 7.])
 reaction_model.set_exchange_phases(exchanger)
 reaction_model.set_phases(equilibrium_phases)
 reaction_model.set_phases(surfaces)
-# reaction_model.set_phases(kinetic_phases)
+reaction_model.set_phases(kinetic_phases)
 
 # set Phreeqc postfix file
 reaction_model.set_postfix(postfix_filepath)
