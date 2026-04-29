@@ -67,11 +67,11 @@ except AttributeError:
     pass
 
 # %%
-#user = "Anthony"
-user = 'Lauren'
+user = "Anthony"
+# user = 'Lauren'
 if user == 'Lauren':
     os.chdir(Path("C:\\Users\\rdchllkm\\Documents\\GitHub\\mf6rtm-asr-example\\src")) # set to working directory for this notebook
-import utils # from this repo
+from mf6rtm_asr_example import utils # from this repo
 
 # %% [markdown]
 # ### If you get `ModuleNotFoundError`

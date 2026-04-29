@@ -18,7 +18,16 @@
 # %% [markdown]
 # # ASR Simulation 3: Grid 2 (10ft near well) with Chemistry from MF6RTM Example 5 (Appelo 1998) and Arsenic Chemistry from LimnoTech coal ash work.
 #
-# This simulation adds **arsenic redox chemistry** -- from MF6RTM Example 5 (Appelo 1998) and Arsenic Chemistry from LimnoTech coal ash work -- to the 3D transport models of the simple ASR test case.
+# This simulation adds **arsenic redox chemistry** -- from [MF6RTM Example 5](https://github.com/p-ortega/mf6rtm/blob/main/benchmark/ex5.ipynb) (Appelo 1998) and Arsenic Chemistry from LimnoTech coal ash work -- to the 3D transport models of the simple ASR test case. 
+#
+# NOTE: THIS EXAMPLE CRASHES with Arsenic.
+#
+# MF6RTM Example 5 includes these geochemical processes:
+# - Solutions (required aqueous chemistry)
+# - Exchanges
+# - Equilibrium Phases (mineral precipitation/dissolution reaction equilibria)
+# - Kinetics (mineral precipitation/dissolution rates)
+# - Surfaces (adsorption/desorption onto minerals defined above)
 #
 # For information and exploration of the simple ASR Modflow 6 simulation used throughout this repository, see `sims/sim00-mf6only/mf6_explore.ipynb`.
 #
@@ -67,7 +76,7 @@ except AttributeError:
     pass
 
 # %%
-import utils # from this repo
+from mf6rtm_asr_example import utils # from this repo
 
 # %% [markdown]
 # ### If you get `ModuleNotFoundError`

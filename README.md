@@ -11,6 +11,62 @@ This simulation serves as a unified foundation to develop and test:
 - Improvements to the [`mf6rtm`](https://github.com/p-ortega/mf6rtm) package
 
 
+## Jupyter Notebooks paired with Jupytext
+
+Many Jupyter Notebooks are automatically paired with `.py` files via [Jupytext](https://jupytext.readthedocs.io/en/latest/index.html). Editing one file should automatically sync code and markdown to the other file with every open or save.
+
+If using VS Code, install the the [Jupytext Sync extension](https://jupytext.readthedocs.io/en/latest/vs-code.html) for maximum benefit.
+
+
+## Installation
+
+We recommend using [pixi](https://pixi.prefix.dev/latest/), the next-generation reproducible package management tool built on [conda](https://docs.conda.io/projects/conda/en/stable/) tooling. 
+
+A major benefit is that Pixi itself can be installed on any platform, including linux supercomputers, with a shell script and without needing a pre-existing Python environment.
+
+If you are new to pixi but familiar with conda, this [Switching from Conda](https://pixi.prefix.dev/latest/switching_from/conda/) documentation succinctly compares similarities and differences.
+
+Alternately, use a conda environment with the same dependencies.
+
+### Install Development Environment with Pixi (Recommended)
+
+### 1. Install Pixi
+
+Follow [Pixi Installation](https://pixi.prefix.dev/latest/installation/) instructions for your platform.
+
+### 2. Clone or Download this Repository
+
+From this Github page, click on the green "Code" dropdown button near the upper right. Select to either "Open in GitHub Desktop" (i.e. git clone) or "Download ZIP". We recommend using GitHub Desktop, to most easily receive updates, stage commits, and resolve merge conficts.
+
+Place your copy of this repo in any convenient location on your computer.
+
+### 3. Create a project-specific workspace using pixi
+
+Create a project-specific environment and workspace from the `pixi.toml` or `pyproject.toml` manifest file. 
+
+From your terminal or console, navigate to the directory of the repository you just cloned. To install the development environment, execute the following command: 
+
+```sh
+pixi install
+```
+
+To activate the newly created environment, execute the following command:
+ 
+```sh
+pixi shell
+```
+
+Note that VSCode does not always detect your new pixi environments, so you may need to **Manually Select the Interpreter**: 
+
+- Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`).
+- Type and select "Python: Select Interpreter".
+- Select "Enter interpreter path..." and then "Find...".
+- Navigate to your project's pixi environment directory. The default path is usually within your project folder at `.pixi/envs/default/bin/` python (or Scripts\python.exe on Windows).
+- Select the `python` or `python.exe` executable.
+
+Installing the [Pixi Code](https://marketplace.visualstudio.com/items?itemName=renan-r-santos.pixi-code) VSCode extension might also help.
+
+
 ### Install Development Environment with Conda
 
 Follow these steps to install using the [conda](https://docs.conda.io/en/latest/) package manager.

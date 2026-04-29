@@ -1,0 +1,87 @@
+[project]
+name = "mf6rtm_asr_example"
+description = "MF6RTM Example for Aquifer Storage Recovery (ASR)"
+authors = [
+    {name = "Anthony Aufdenkampe", email = "aaufdenkampe@limno.com"},
+    {name = "Lauren Mancewicz", email = "Lauren.K.Mancewicz@usace.army.mil"},
+]
+dynamic = ["version", "readme"]
+requires-python = ">= 3.12"
+
+
+###############
+### Build 
+###############
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "./src/mf6rtm_asr_example/__init__.py"
+
+[tool.hatch.readme]
+path = "./README.md"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+
+########################
+### Pixi 
+########################
+
+[tool.pixi.workspace]
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64", "osx-arm64", "win-64"]
+
+[tool.pixi.dependencies]
+# Modeling
+flopy = "*"
+modflow6 = "*"
+modflowapi = "*"
+# modflow-devtools = "*"
+phreeqcrm = "*"
+
+# Analysis
+cf-xarray = "*"
+cftime = "*"
+cfunits = "*"
+geopandas = "*"
+# imod = "*"  # toolset for using xarray, geopandas, dask, pyVista with Modflow 
+numpy = "*"
+pyemu = "*" # Environmental Model Uncertainty w/ PEST/PEST++ 
+scipy = "*"
+snakemake = "*"
+xarray = "*"
+
+# Notebooks & Visualization
+geoviews = "*"
+hvplot = "*"
+panel  = "*"
+ipympl = "*"
+ipywidgets = "*"
+ipywidgets_bokeh = "*"
+jupyter_bokeh = "*"
+jupyterlab = "*"
+jupyterlab-lsp = "*"
+jupytext = "*"
+pyviz_comms = "*"
+python-lsp-server = "*"
+pylsp-mypy = "*"
+selenium = "*"  # required to save HoloViz/Bokeh plots
+firefox = "*"  # required to save HoloViz/Bokeh plots
+geckodriver = "*"  # required to save HoloViz/Bokeh plots
+
+# Dev & Testing
+pytest = "*"
+pytest-cov = "*"
+pyright = "*"
+ruff = "*"
+snakeviz = "*"
+
+[tool.pixi.pypi-dependencies]
+mf6rtm_asr_example = { path = ".", editable = true }
+mf6rtm = { path = "../mf6rtm", editable = true }
+
+[tool.pixi.tasks]
+verify-install = {cmd = "python -c \"import mf6rtm_asr_example; import mf6rtm; \""}

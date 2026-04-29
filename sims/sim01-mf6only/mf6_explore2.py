@@ -93,7 +93,7 @@ except AttributeError:
     pass
 
 # %%
-import utils # from this repo
+from mf6rtm_asr_example import utils # from this repo
 
 # %% [markdown]
 # ### If you get `ModuleNotFoundError`

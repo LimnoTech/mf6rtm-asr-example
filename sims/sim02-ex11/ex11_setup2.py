@@ -10,7 +10,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: modflow
+#     display_name: default
 #     language: python
 #     name: python3
 # ---
@@ -67,7 +67,7 @@ except AttributeError:
     pass
 
 # %%
-import utils # from this repo
+from mf6rtm_asr_example from mf6rtm_asr_example import utils # from this repo
 
 # %% [markdown]
 # ### If you get `ModuleNotFoundError`
