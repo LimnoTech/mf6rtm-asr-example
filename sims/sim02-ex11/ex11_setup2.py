@@ -46,6 +46,7 @@
 import os
 import shutil
 from pathlib import Path
+from importlib.metadata import version
 from datetime import datetime
 
 import numpy as np
@@ -58,16 +59,10 @@ from modflowapi import ModflowApi
 # %%
 # Import the MFRTM package, installed using `conda develop`
 import mf6rtm
-
-display(mf6rtm.__file__)
-try:
-    # if current LimnoTech development version
-    display(mf6rtm.__version__)
-except AttributeError:
-    pass
+version("mf6rtm")
 
 # %%
-from mf6rtm_asr_example from mf6rtm_asr_example import utils # from this repo
+from mf6rtm_asr_example import utils # from this repo
 
 # %% [markdown]
 # ### If you get `ModuleNotFoundError`
