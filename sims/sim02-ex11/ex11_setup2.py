@@ -1153,9 +1153,10 @@ for t in t_l:
 reaction_model.run()
 
 # %% [markdown]
-#
 # Run times:
 # - 10% faster than grid 1
+# - 1.1074 mins for phreeqcrm v0.16 from conda-forge w/ nthreads = 4
+# - 1.124 mins for phreeqcrm v0.17 from PyPI where nthreads = 1 for Mac
 
 # %% [markdown]
 # ## Visualize MF6RTM Results

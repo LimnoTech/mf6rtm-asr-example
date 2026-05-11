@@ -40,7 +40,7 @@ flopy = "*"
 modflow6 = "*"
 modflowapi = "*"
 # modflow-devtools = "*"
-phreeqcrm = "*"
+phreeqcrm = "*" 
 
 # Analysis
 cf-xarray = "*"

@@ -29,7 +29,7 @@ dependencies:
 
   # MF6RTM packages & dependencies
   # - mf6rtm # installed via conda develop
-  - phreeqcrm # install via pip; latest version not on conda forge
+  - phreeqcrm
   # - openmp # NOTE: llvm-openmp is installed instead by 
   - toml
 
@@ -89,6 +89,4 @@ dependencies:
   - pip
   - git  # for pip installing directly from GitHub
   # PIP install requirements only if it is not  possible with conda
-  - pip:
-    # - phreeqcrm  # v0.17 doesn't have OpenMP for MacOS. use condaforge install
-  
+  # - pip:
