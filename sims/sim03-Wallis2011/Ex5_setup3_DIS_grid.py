@@ -8,7 +8,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.2
 #   kernelspec:
 #     display_name: modflow
 #     language: python
@@ -46,7 +46,6 @@
 import os
 import shutil
 from pathlib import Path
-from importlib.metadata import version
 from datetime import datetime
 
 import numpy as np
@@ -59,7 +58,13 @@ from modflowapi import ModflowApi
 # %%
 # Import the MFRTM package, installed using `conda develop`
 import mf6rtm
-version("mf6rtm")
+
+display(mf6rtm.__file__)
+try:
+    # if current LimnoTech development version
+    display(mf6rtm.__version__)
+except AttributeError:
+    pass
 
 # %%
 user = "Anthony"

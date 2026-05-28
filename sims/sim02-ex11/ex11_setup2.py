@@ -1149,14 +1149,16 @@ for t in t_l:
 # Using MF6RTM
 
 # %%
+# %%time
 # Run the model using this wrapper function for `mf6rtm.solve(model.wd)`
-reaction_model.run()
+reaction_model.run(nthread=4, min_concentration=0.0)
 
 # %% [markdown]
 # Run times:
 # - 10% faster than grid 1
-# - 1.1074 mins for phreeqcrm v0.16 from conda-forge w/ nthreads = 4
-# - 1.124 mins for phreeqcrm v0.17 from PyPI where nthreads = 1 for Mac
+# - 1.124 mins for phreeqcrm v0.17 where nthreads = 1
+# - 0.628 mins for phreeqcrm v0.17 where nthreads = 4
+# - 0.61539 mins where nthreads = 4, min_concentration = 0.0
 
 # %% [markdown]
 # ## Visualize MF6RTM Results

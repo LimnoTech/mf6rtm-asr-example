@@ -49,6 +49,7 @@ cfunits = "*"
 geopandas = "*"
 # imod = "*"  # toolset for using xarray, geopandas, dask, pyVista with Modflow 
 numpy = "*"
+pyarrow = "*"
 pyemu = "*" # Environmental Model Uncertainty w/ PEST/PEST++ 
 scipy = "*"
 snakemake = "*"

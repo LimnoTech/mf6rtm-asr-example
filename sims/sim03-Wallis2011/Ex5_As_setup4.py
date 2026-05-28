@@ -8,9 +8,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.2
 #   kernelspec:
-#     display_name: modflow
+#     display_name: default
 #     language: python
 #     name: python3
 # ---
@@ -55,7 +55,6 @@
 import os
 import shutil
 from pathlib import Path
-from importlib.metadata import version
 from datetime import datetime
 
 import numpy as np
@@ -68,7 +67,13 @@ from modflowapi import ModflowApi
 # %%
 # Import the MFRTM package, installed using `conda develop`
 import mf6rtm
-version("mf6rtm")
+
+display(mf6rtm.__file__)
+try:
+    # if current LimnoTech development version
+    display(mf6rtm.__version__)
+except AttributeError:
+    pass
 
 # %%
 from mf6rtm_asr_example import utils # from this repo
@@ -1070,7 +1075,7 @@ utils.run_models(sim, silent=False)
 
 # %%
 # Run the model using this wrapper function for `mf6rtm.solve(model.wd)`
-reaction_model.run()
+reaction_model.run(nthread=4, min_concentration=0.0)
 
 # %% [markdown]
 # Using MF6RTM + Coal Ash Chemistry
